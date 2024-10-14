@@ -1,5 +1,5 @@
 # Stage 1: Build static frontend assets.
-FROM node:22.5-alpine as build
+FROM node:22.9-alpine as build
 
 ENV NODE_ENV production
 
@@ -15,7 +15,7 @@ COPY h/static ./h/static
 RUN yarn build
 
 # Stage 2: Build the rest of the app using the build output from Stage 1.
-FROM python:3.11.9-alpine3.19
+FROM python:3.11.10-alpine3.19
 LABEL maintainer="Hypothes.is Project and contributors"
 
 # Install system build and runtime dependencies.

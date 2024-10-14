@@ -15,12 +15,19 @@ class GroupCreateEditController:
     def __init__(self, context, request):
         self.context = context
         self.request = request
+        self.annotation_stats_service = request.find_service(name="annotation_stats")
 
     @view_config(route_name="group_create", request_method="GET")
     def create(self):
         """Render the page for creating a new group."""
+
+        if self.request.feature("group_type"):
+            page_title = "Create a new group"
+        else:
+            page_title = "Create a new private group"
+
         return {
-            "page_title": "Create a new private group",
+            "page_title": page_title,
             "js_config": self._js_config(),
         }
 
@@ -47,6 +54,9 @@ class GroupCreateEditController:
                 },
             },
             "context": {"group": None},
+            "features": {
+                "group_type": self.request.feature("group_type"),
+            },
         }
 
         if group := getattr(self.context, "group", None):
@@ -57,6 +67,9 @@ class GroupCreateEditController:
                 "type": group.type,
                 "link": self.request.route_url(
                     "group_read", pubid=group.pubid, slug=group.slug
+                ),
+                "num_annotations": self.annotation_stats_service.total_group_annotation_count(
+                    group.pubid, unshared=False
                 ),
             }
             js_config["api"]["updateGroup"] = {

@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements/dev.in
 #
-alembic==1.13.2
+alembic==1.13.3
     # via -r requirements/prod.txt
 amqp==5.2.0
     # via
@@ -33,7 +33,7 @@ certifi==2024.8.30
     # via
     #   -r requirements/prod.txt
     #   sentry-sdk
-cffi==1.17.0
+cffi==1.17.1
     # via -r requirements/prod.txt
 chameleon==4.4.3
     # via
@@ -109,7 +109,7 @@ importlib-metadata==7.0.1
     #   -r requirements/prod.txt
     #   h-api
     #   pip-sync-faster
-importlib-resources==6.4.4
+importlib-resources==6.4.5
     # via
     #   -r requirements/prod.txt
     #   data-tasks
@@ -142,7 +142,7 @@ jsonschema-specifications==2023.12.1
     # via
     #   -r requirements/prod.txt
     #   jsonschema
-kombu==5.4.0
+kombu==5.4.2
     # via
     #   -r requirements/prod.txt
     #   celery
@@ -218,7 +218,7 @@ pycparser==2.21
     # via
     #   -r requirements/prod.txt
     #   cffi
-pycryptodomex==3.20.0
+pycryptodomex==3.21.0
     # via -r requirements/prod.txt
 pygments==2.17.2
     # via ipython
@@ -267,7 +267,7 @@ python-dateutil==2.9.0.post0
     #   faker
 python-slugify==8.0.4
     # via -r requirements/prod.txt
-pytz==2024.1
+pytz==2024.2
     # via -r requirements/prod.txt
 referencing==0.32.1
     # via
@@ -286,7 +286,7 @@ rpds-py==0.16.2
     #   -r requirements/prod.txt
     #   jsonschema
     #   referencing
-sentry-sdk==2.13.0
+sentry-sdk==2.15.0
     # via
     #   -r requirements/prod.txt
     #   h-pyramid-sentry
@@ -324,7 +324,7 @@ traitlets==5.14.1
     # via
     #   ipython
     #   matplotlib-inline
-transaction==4.0
+transaction==5.0
     # via
     #   -r requirements/prod.txt
     #   pyramid-mailer
@@ -346,6 +346,7 @@ tzdata==2023.4
     # via
     #   -r requirements/prod.txt
     #   celery
+    #   kombu
 urllib3==2.2.2
     # via
     #   -r requirements/prod.txt

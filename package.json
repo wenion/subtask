@@ -18,13 +18,13 @@
     "@babel/preset-react": "^7.24.7",
     "@babel/preset-typescript": "^7.24.7",
     "@hypothesis/frontend-build": "^3.0.0",
-    "@hypothesis/frontend-shared": "^8.4.0",
+    "@hypothesis/frontend-shared": "^8.6.0",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^26.0.1",
-    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-node-resolve": "^15.3.0",
     "@rollup/plugin-terser": "^0.4.4",
-    "@sentry/browser": "^8.27.0",
-    "autoprefixer": "^10.4.19",
+    "@sentry/browser": "^8.33.0",
+    "autoprefixer": "^10.4.20",
     "bootstrap": "^4.6.2",
     "classnames": "^2.5.1",
     "escape-html": "^1.0.3",
@@ -36,12 +36,12 @@
     "jquery": "^3.7.1",
     "normalize.css": "^8.0.0",
     "popper.js": "^1.16.1",
-    "postcss": "^8.4.39",
-    "preact": "^10.23.2",
-    "rollup": "^4.19.2",
-    "sass": "^1.77.8",
+    "postcss": "^8.4.47",
+    "preact": "^10.24.1",
+    "rollup": "^4.22.4",
+    "sass": "^1.79.4",
     "scroll-into-view": "^1.16.2",
-    "tailwindcss": "^3.4.10"
+    "tailwindcss": "^3.4.13"
   },
   "devDependencies": {
     "@hypothesis/frontend-testing": "^1.2.2",
@@ -53,7 +53,7 @@
     "eslint": "^8.57.0",
     "eslint-config-hypothesis": "2.6",
     "eslint-plugin-mocha": "^10.5.0",
-    "eslint-plugin-react": "^7.34.3",
+    "eslint-plugin-react": "^7.37.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "karma": "^6.4.4",
     "karma-chrome-launcher": "^3.2.0",
@@ -64,7 +64,7 @@
     "prettier": "^3.3.3",
     "sinon": "^18.0.0",
     "syn": "^0.2.2",
-    "typescript": "^5.5.3"
+    "typescript": "^5.6.2"
   },
   "engines": {
     "node": ">=6"

@@ -16,20 +16,32 @@ def is_api_request(request) -> bool:
 class AuthTicketCookieHelper:
     def identity(
         self, cookie: SignedCookieProfile, request: Request
-    ) -> Identity | None:
+    ) -> tuple[Identity, AuthTicket] | tuple[None, None]:
         userid, ticket_id = self.get_cookie_value(cookie)
 
-        user = request.find_service(AuthTicketService).verify_ticket(userid, ticket_id)
+        ticket = request.find_service(AuthTicketService).verify_ticket(
+            userid, ticket_id
+        )
 
-        if (not user) or user.deleted:
-            return None
+        if (not ticket) or ticket.user.deleted:
+            return (None, None)
 
-        return Identity.from_models(user=user)
+        return (Identity.from_models(user=ticket.user), ticket)
 
-    def remember(self, cookie: SignedCookieProfile, request: Request, userid: str):
-        ticket_id = AuthTicket.generate_ticket_id()
-        request.find_service(AuthTicketService).add_ticket(userid, ticket_id)
-        return cookie.get_headers([userid, ticket_id])
+    def add_ticket(self, request: Request, userid) -> AuthTicket:
+        """
+        Add a new auth ticket for the given user to the DB.
+
+        Returns the the newly-created auth ticket.
+        """
+        return request.find_service(AuthTicketService).add_ticket(
+            userid, AuthTicket.generate_ticket_id()
+        )
+
+    def remember(
+        self, cookie: SignedCookieProfile, userid: str, auth_ticket: AuthTicket
+    ):
+        return cookie.get_headers([userid, auth_ticket.id])
 
     def forget(self, cookie: SignedCookieProfile, request: Request):
         request.session.invalidate()

@@ -1,4 +1,5 @@
 import { mount } from 'enzyme';
+import { act } from 'preact/test-utils';
 import { delay, waitForElement } from '@hypothesis/frontend-testing';
 
 import {
@@ -27,6 +28,9 @@ describe('CreateEditGroupForm', () => {
       },
       context: {
         group: null,
+      },
+      features: {
+        group_type: true,
       },
     };
 
@@ -63,6 +67,27 @@ describe('CreateEditGroupForm', () => {
   const componentIsInErrorState = component => {
     return Boolean(component.prop('error'));
   };
+
+  const getSelectedGroupType = wrapper => {
+    return wrapper.find('[data-testid="group-type"]').prop('selected');
+  };
+
+  const setSelectedGroupType = (wrapper, newType) => {
+    const radioGroup = wrapper.find('[data-testid="group-type"]');
+    act(() => {
+      radioGroup.prop('onChange')(newType);
+    });
+    wrapper.update();
+  };
+
+  /** Save the form and wait until the request completes. */
+  async function saveChanges(wrapper) {
+    wrapper.find('form[data-testid="form"]').simulate('submit');
+    await waitForElement(
+      wrapper,
+      `button[data-testid="button"][disabled=false]`,
+    );
+  }
 
   const getElements = wrapper => {
     return {
@@ -187,21 +212,39 @@ describe('CreateEditGroupForm', () => {
     });
   });
 
-  it('displays a create-new-group form', async () => {
-    const { wrapper, elements } = createWrapper();
-    const headerEl = elements.header.element;
-    const nameEl = elements.name.fieldEl;
-    const descriptionEl = elements.description.fieldEl;
-    const submitButtonEl = elements.submitButton.element;
+  [
+    {
+      groupTypeFlag: true,
+      heading: 'Create a new group',
+    },
+    {
+      groupTypeFlag: false,
+      heading: 'Create a new private group',
+    },
+  ].forEach(({ groupTypeFlag, heading }) => {
+    it('displays a create-new-group form', async () => {
+      config.features.group_type = groupTypeFlag;
 
-    assert.equal(headerEl.text(), 'Create a new private group');
-    assert.equal(nameEl.getDOMNode().value, '');
-    assert.equal(descriptionEl.getDOMNode().value, '');
-    assert.equal(submitButtonEl.text(), 'Create group');
-    assert.isFalse(wrapper.exists('[data-testid="back-link"]'));
-    assert.isFalse(wrapper.exists('[data-testid="error-message"]'));
-    await assertInLoadingState(wrapper, false);
-    assert.isFalse(savedConfirmationShowing(wrapper));
+      const { wrapper, elements } = createWrapper();
+      const headerEl = elements.header.element;
+      const nameEl = elements.name.fieldEl;
+      const descriptionEl = elements.description.fieldEl;
+      const submitButtonEl = elements.submitButton.element;
+
+      assert.equal(headerEl.text(), heading);
+      assert.equal(nameEl.getDOMNode().value, '');
+      assert.equal(descriptionEl.getDOMNode().value, '');
+      assert.equal(submitButtonEl.text(), 'Create group');
+      assert.isFalse(wrapper.exists('[data-testid="back-link"]'));
+      assert.isFalse(wrapper.exists('[data-testid="error-message"]'));
+
+      if (groupTypeFlag) {
+        assert.equal(getSelectedGroupType(wrapper), 'private');
+      }
+
+      await assertInLoadingState(wrapper, false);
+      assert.isFalse(savedConfirmationShowing(wrapper));
+    });
   });
 
   it('does not warn when leaving page if there are unsaved changes', () => {
@@ -230,38 +273,56 @@ describe('CreateEditGroupForm', () => {
     const { wrapper } = createWrapper();
     fakeCallAPI.resolves({ links: { html: 'https://example.com/group/foo' } });
 
-    await wrapper.find('form[data-testid="form"]').simulate('submit');
+    wrapper.find('form[data-testid="form"]').simulate('submit');
 
     await assertInLoadingState(wrapper, true);
     assert.isFalse(savedConfirmationShowing(wrapper));
   });
 
-  it('creates the group and redirects the browser', async () => {
-    const { wrapper, elements } = createWrapper();
-    const nameEl = elements.name.fieldEl;
-    const descriptionEl = elements.description.fieldEl;
-    const groupURL = 'https://example.com/group/foo';
-    fakeCallAPI.resolves({ links: { html: groupURL } });
+  [
+    {
+      name: 'Test group name',
+      description: 'Test description',
+      type: 'private',
+    },
+    {
+      name: 'Test group name',
+      description: 'Test description',
+      type: 'restricted',
+    },
+    {
+      name: 'Test group name',
+      description: 'Test description',
+      type: 'open',
+    },
+  ].forEach(({ name, description, type }) => {
+    it('creates the group and redirects the browser', async () => {
+      const { wrapper, elements } = createWrapper();
+      const nameEl = elements.name.fieldEl;
+      const descriptionEl = elements.description.fieldEl;
+      const groupURL = 'https://example.com/group/foo';
+      fakeCallAPI.resolves({ links: { html: groupURL } });
 
-    const name = 'Test Group Name';
-    const description = 'Test description';
-    nameEl.getDOMNode().value = name;
-    nameEl.simulate('input');
-    descriptionEl.getDOMNode().value = description;
-    descriptionEl.simulate('input');
-    await wrapper.find('form[data-testid="form"]').simulate('submit');
+      nameEl.getDOMNode().value = name;
+      nameEl.simulate('input');
+      descriptionEl.getDOMNode().value = description;
+      descriptionEl.simulate('input');
+      setSelectedGroupType(wrapper, type);
 
-    assert.isTrue(
-      fakeCallAPI.calledOnceWithExactly(config.api.createGroup.url, {
+      wrapper.find('form[data-testid="form"]').simulate('submit');
+      await delay(0);
+
+      assert.calledOnceWithExactly(fakeCallAPI, config.api.createGroup.url, {
         method: config.api.createGroup.method,
         headers: config.api.createGroup.headers,
         json: {
           name,
           description,
+          type,
         },
-      }),
-    );
-    assert.isTrue(fakeSetLocation.calledOnceWithExactly(groupURL));
+      });
+      assert.calledOnceWithExactly(fakeSetLocation, groupURL);
+    });
   });
 
   it('shows an error message if callAPI() throws an error', async () => {
@@ -288,6 +349,9 @@ describe('CreateEditGroupForm', () => {
         name: 'Test Name',
         description: 'Test group description',
         link: 'https://example.com/groups/testid',
+
+        // Set this to a non-default value.
+        type: 'open',
       };
       config.api.updateGroup = {
         method: 'PATCH',
@@ -308,6 +372,7 @@ describe('CreateEditGroupForm', () => {
         descriptionEl.getDOMNode().value,
         config.context.group.description,
       );
+      assert.equal(getSelectedGroupType(wrapper), config.context.group.type);
       assert.equal(submitButtonEl.text(), 'Save changes');
       assert.isTrue(wrapper.exists('[data-testid="back-link"]'));
       assert.isFalse(wrapper.exists('[data-testid="error-message"]'));
@@ -348,11 +413,15 @@ describe('CreateEditGroupForm', () => {
 
       const name = 'Edited Group Name';
       const description = 'Edited group description';
+      const newGroupType = 'restricted';
+
       nameEl.getDOMNode().value = name;
       nameEl.simulate('input');
       descriptionEl.getDOMNode().value = description;
       descriptionEl.simulate('input');
-      await wrapper.find('form[data-testid="form"]').simulate('submit');
+      wrapper.find(`[data-value="${newGroupType}"]`).simulate('click');
+
+      wrapper.find('form[data-testid="form"]').simulate('submit');
 
       assert.isTrue(
         fakeCallAPI.calledOnceWithExactly(config.api.updateGroup.url, {
@@ -362,6 +431,7 @@ describe('CreateEditGroupForm', () => {
             id: config.context.group.pubid,
             name,
             description,
+            type: newGroupType,
           },
         }),
       );
@@ -380,7 +450,7 @@ describe('CreateEditGroupForm', () => {
       const { wrapper } = createWrapper();
       fakeCallAPI.resolves();
 
-      await wrapper.find('form[data-testid="form"]').simulate('submit');
+      wrapper.find('form[data-testid="form"]').simulate('submit');
 
       await assertInLoadingState(wrapper, false);
       assert.isTrue(savedConfirmationShowing(wrapper));
@@ -402,20 +472,205 @@ describe('CreateEditGroupForm', () => {
       assert.isFalse(savedConfirmationShowing(wrapper));
     });
 
-    ['name', 'description'].forEach(field => {
+    ['name', 'description', 'type'].forEach(field => {
       it('clears the confirmation if fields are edited again', async () => {
         const { wrapper, elements } = createWrapper();
-        const fieldEl = elements[field].fieldEl;
         fakeCallAPI.resolves();
-        await wrapper.find('form[data-testid="form"]').simulate('submit');
+        wrapper.find('form[data-testid="form"]').simulate('submit');
 
-        fieldEl.getDOMNode().value = 'new text';
-        fieldEl.simulate('input');
+        if (field === 'type') {
+          // nb. Since the group has no annotations, the type will change
+          // immediately.
+          setSelectedGroupType(wrapper, 'open');
+        } else {
+          const fieldEl = elements[field].fieldEl;
+          fieldEl.getDOMNode().value = 'new text';
+          fieldEl.simulate('input');
+        }
 
         await assertInLoadingState(wrapper, false);
         assert.isFalse(savedConfirmationShowing(wrapper));
       });
     });
+
+    it('clears confirmation when type is changed with a warning', async () => {
+      // Trigger warning when changing group type
+      config.context.group = {
+        ...config.context.group,
+        num_annotations: 2,
+        type: 'private',
+      };
+      const { wrapper } = createWrapper();
+
+      fakeCallAPI.resolves();
+      await saveChanges(wrapper);
+      assert.isTrue(savedConfirmationShowing(wrapper));
+
+      // Change group type. The save state is not cleared immediately as a
+      // warning is shown.
+      setSelectedGroupType(wrapper, 'open');
+      assert.isTrue(savedConfirmationShowing(wrapper));
+
+      // When the change is confirmed, the form is marked as unsaved.
+      const warning = wrapper.find('WarningDialog');
+      act(() => warning.prop('onConfirm')());
+      wrapper.update();
+      assert.isFalse(savedConfirmationShowing(wrapper));
+    });
+  });
+
+  [
+    // Do not warn when changing from the default type of "private" to a public
+    // type, when creating a new group.
+    {
+      oldType: null,
+      newType: 'open',
+      expectedWarning: null,
+      annotationCount: 0,
+    },
+    {
+      // Warn when making annotations public (open group)
+      oldType: 'private',
+      newType: 'open',
+      annotationCount: 2,
+      expectedWarning: {
+        title: 'Make 2 annotations public?',
+        message:
+          'Are you sure you want to make "Test Name" an open group? 2 annotations that are visible only to members of "Test Name" will become publicly visible.',
+        confirmAction: 'Make annotations public',
+      },
+    },
+    {
+      // Warn when making annotations public (singular)
+      oldType: 'private',
+      newType: 'open',
+      annotationCount: 1,
+      expectedWarning: {
+        title: 'Make 1 annotation public?',
+        message:
+          'Are you sure you want to make "Test Name" an open group? 1 annotation that is visible only to members of "Test Name" will become publicly visible.',
+        confirmAction: 'Make annotations public',
+      },
+    },
+    {
+      // Warn when making annotations public (restricted group)
+      oldType: 'private',
+      newType: 'restricted',
+      annotationCount: 5,
+      expectedWarning: {
+        title: 'Make 5 annotations public?',
+        message:
+          'Are you sure you want to make "Test Name" a restricted group? 5 annotations that are visible only to members of "Test Name" will become publicly visible.',
+        confirmAction: 'Make annotations public',
+      },
+    },
+    {
+      // Warn when making annotations private
+      oldType: 'open',
+      newType: 'private',
+      annotationCount: 3,
+      expectedWarning: {
+        title: 'Make 3 annotations private?',
+        message:
+          'Are you sure you want to make "Test Name" a private group? 3 annotations that are publicly visible will become visible only to members of "Test Name".',
+        confirmAction: 'Make annotations private',
+      },
+    },
+    {
+      // Warn when making annotations private (singular)
+      oldType: 'open',
+      newType: 'private',
+      annotationCount: 1,
+      expectedWarning: {
+        title: 'Make 1 annotation private?',
+        message:
+          'Are you sure you want to make "Test Name" a private group? 1 annotation that is publicly visible will become visible only to members of "Test Name".',
+        confirmAction: 'Make annotations private',
+      },
+    },
+    {
+      // Don't warn if there are no annotations
+      oldType: 'open',
+      newType: 'private',
+      annotationCount: 0,
+      expectedWarning: null,
+    },
+    {
+      // Don't warn if the old and new types are both public
+      oldType: 'open',
+      newType: 'restricted',
+      annotationCount: 3,
+      expectedWarning: null,
+    },
+  ].forEach(({ oldType, newType, annotationCount, expectedWarning }) => {
+    it('shows warning when changing group type between private and public', () => {
+      if (oldType !== null) {
+        config.context.group = {
+          pubid: 'testid',
+          name: 'Test Name',
+          description: 'Test group description',
+          link: 'https://example.com/groups/testid',
+          type: oldType,
+          num_annotations: annotationCount,
+        };
+      }
+
+      const { wrapper } = createWrapper();
+      setSelectedGroupType(wrapper, newType);
+
+      if (expectedWarning) {
+        const warning = wrapper.find('WarningDialog');
+        assert.isTrue(warning.exists());
+        assert.equal(warning.prop('title'), expectedWarning.title);
+        assert.equal(warning.prop('message'), expectedWarning.message);
+        assert.equal(
+          warning.prop('confirmAction'),
+          expectedWarning.confirmAction,
+        );
+      } else {
+        assert.isFalse(wrapper.exists('WarningDialog'));
+      }
+    });
+  });
+
+  it('updates group type if change is confirmed', async () => {
+    config.context.group = {
+      pubid: 'testid',
+      name: 'Test Name',
+      description: 'Test group description',
+      link: 'https://example.com/groups/testid',
+      type: 'private',
+      num_annotations: 3,
+    };
+
+    const { wrapper } = createWrapper();
+    setSelectedGroupType(wrapper, 'open');
+
+    const warning = wrapper.find('WarningDialog');
+    act(() => warning.prop('onConfirm')());
+    wrapper.update();
+
+    assert.equal(getSelectedGroupType(wrapper), 'open');
+  });
+
+  it('does not update group type if change is canceled', async () => {
+    config.context.group = {
+      pubid: 'testid',
+      name: 'Test Name',
+      description: 'Test group description',
+      link: 'https://example.com/groups/testid',
+      type: 'private',
+      num_annotations: 3,
+    };
+
+    const { wrapper } = createWrapper();
+    setSelectedGroupType(wrapper, 'open');
+
+    const warning = wrapper.find('WarningDialog');
+    act(() => warning.prop('onCancel')());
+    wrapper.update();
+
+    assert.equal(getSelectedGroupType(wrapper), 'private');
   });
 });
 

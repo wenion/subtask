@@ -9,7 +9,6 @@ from webob.multidict import MultiDict
 
 from h.activity.query import ActivityResults
 from h.security import Permission
-from h.services.annotation_stats import AnnotationStatsService
 from h.traversal import UserContext
 from h.traversal.group import GroupContext
 from h.views import activity
@@ -422,7 +421,7 @@ class TestGroupSearchController:
         result = controller.search()
 
         actual = {m["username"] for m in result["group_users_args"][1]}
-        expected = {test_group.creator.username}
+        expected = {member.username for member in test_group.members}
         assert actual == expected
 
     @pytest.mark.parametrize(
@@ -436,7 +435,7 @@ class TestGroupSearchController:
         result = controller.search()
 
         actual = {m["userid"] for m in result["group_users_args"][1]}
-        expected = {test_group.creator.userid}
+        expected = {member.userid for member in test_group.members}
         assert actual == expected
 
     @pytest.mark.parametrize(
@@ -676,18 +675,6 @@ class TestGroupSearchController:
         userids = [i["userid"] for i in info[1]]
         for member in test_group.members:
             assert member.userid in userids
-
-        search.reset_mock()
-
-    @pytest.mark.parametrize("test_group", [("open_group")], indirect=["test_group"])
-    def test_search_sets_display_members_for_open_group(
-        self, controller, test_group, search
-    ):
-        info = controller.search()["group_users_args"]
-        userids = [i["userid"] for i in info[1]]
-
-        # At the moment, for an open group we return the group creator as the moderator
-        assert userids == [test_group.creator.userid]
 
         search.reset_mock()
 
@@ -1279,17 +1266,10 @@ def routes(pyramid_config):
 
 
 @pytest.fixture
-def annotation_stats_service(pyramid_config):
-    ann_stat_svc = mock.create_autospec(
-        AnnotationStatsService, instance=True, spec_set=True
-    )
-
-    ann_stat_svc.user_annotation_count.return_value = 6
-    ann_stat_svc.group_annotation_count.return_value = 5
-
-    pyramid_config.register_service(ann_stat_svc, name="annotation_stats")
-
-    return ann_stat_svc
+def annotation_stats_service(annotation_stats_service):
+    annotation_stats_service.user_annotation_count.return_value = 6
+    annotation_stats_service.group_annotation_count.return_value = 5
+    return annotation_stats_service
 
 
 @pytest.fixture
