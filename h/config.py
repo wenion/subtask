@@ -143,7 +143,8 @@ def configure(environ=None, settings=None):  # pylint: disable=too-many-statemen
         "h_api_auth_cookie_salt",
         "H_API_AUTH_COOKIE_SALT",
         type_=_to_utf8,
-        required=True,
+        default=DEFAULT_SALT,
+        # required=True,
     )
 
     # Get resolved settings.

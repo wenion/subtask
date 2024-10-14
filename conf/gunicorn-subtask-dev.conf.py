@@ -4,7 +4,7 @@ from os import environ
 bind = "localhost:5003"
 worker_class = "h.subtask.Worker"
 graceful_timeout = 0
-workers = 2
+workers = 1
 worker_connections = 8
 
 
