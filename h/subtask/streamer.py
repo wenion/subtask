@@ -7,7 +7,7 @@ from pyramid.events import ApplicationCreated, subscriber
 
 from h.subtask import db
 from h.subtask.metrics import metrics_process
-from h.subtask.task import process_messages
+from h.subtask.task import process_messages, send_push
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ def start(event):  # pragma: no cover
 
     greenlets = [
         gevent.spawn(process_messages, settings, TRACE_TOPIC, TASK_TOPIC),
+        gevent.spawn(send_push, settings, TASK_TOPIC)
     ]
 
     # Start a "greenlet of last resort" to monitor the worker greenlets and
