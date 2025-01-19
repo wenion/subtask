@@ -541,6 +541,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                     "content": "custom",
                 }
         """
+        logger.info("Callback involved...")
         message = ""
         if payload["userid"] not in user_status:
             user_status[payload["userid"]] = {"last_active": None, "interval": 5000}
@@ -582,7 +583,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         # ------- remove -------
 
         pub.publish(reply_message, produce_routing_key)
-    logger.info("Ummm....")
+
     sub = Sub(
         settings,
         TRACE_EXCHANGE,
