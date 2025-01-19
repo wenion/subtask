@@ -39,6 +39,7 @@ TRACE_EXCHANGE = "trace"
 TASK_EXCHANGE = "process.task"
 
 user_status = {}
+idle_status = {}
 translation_table = str.maketrans(string.punctuation, '_'*len(string.punctuation))
 
 logger = logging.getLogger("TAD")
@@ -296,24 +297,24 @@ def task_classification(url, user_id, interval=None):
     result = fetch_all_user_event_within_time(user_id, time_ago)
     trace = pd.DataFrame(result["table_result"])
 
-    # if trace is None or len(trace) < 2:
-    #     if len(trace) == 0:
-            # if user_id not in idle_status:
-            #     idle_status[user_id] = 0
-            # idle_status[user_id] += 1
-        # logger.warning(f"{user_id}: Not enough trace found - {len(trace)}" + " " + current_time.strftime("%Y-%m-%d %H:%M:%S.%f"))
-        # if user_id in idle_status:
-        #     # if an user is idle for more than 5 minutes, gradually increase the request interval
-        #     idle_result = next_request_result.copy()
-        #     multiplier = 1
-        #     if int(idle_status[user_id]/12) >= 5:
-        #         multiplier += int(idle_status[user_id]/12)
-        #         logger.warning(f"{user_id} is detected to be inactive for more than 5 minutes")
-        #     idle_result["interval"] = idle_result["interval"] * multiplier
-        #     return idle_result
-    #     return next_request_result
-    # if len(trace) > 0 and user_id in idle_status and idle_status[user_id] > 0:
-    #     del idle_status[user_id]
+    if trace is None or len(trace) < 2:
+        if trace and len(trace) == 0:
+            if user_id not in idle_status:
+                idle_status[user_id] = 0
+            idle_status[user_id] += 1
+        logger.warning(f"{user_id}: Not enough trace found - {len(trace)}" + " " + current_time.strftime("%Y-%m-%d %H:%M:%S.%f"))
+        if user_id in idle_status:
+            # if an user is idle for more than 5 minutes, gradually increase the request interval
+            idle_result = next_request_result.copy()
+            multiplier = 1
+            if int(idle_status[user_id]/12) >= 5:
+                multiplier += int(idle_status[user_id]/12)
+                logger.warning(f"{user_id} is detected to be inactive for more than 5 minutes")
+            idle_result["interval"] = idle_result["interval"] * multiplier
+            return idle_result
+        return next_request_result
+    if len(trace) > 0 and user_id in idle_status and idle_status[user_id] > 0:
+        del idle_status[user_id]
     formatted_trace = convert_log_to_formatted(trace)
 
     match_scores = {}
@@ -423,8 +424,14 @@ def send_push(settings, produce_routing_key):
     try:
         while True:
             current_time = datetime.now().timestamp() * 1000
+            to_del = []
             for user, status in user_status.items():
                 interval = status["interval"]
+                if interval < 0:
+                    continue
+                elif interval >= 900000:
+                    to_del.append(user)
+                    continue
                 if current_time - status["last_active"] >= interval:
                     url = status["url"]
                     client_id = status["client_id"]
@@ -437,6 +444,12 @@ def send_push(settings, produce_routing_key):
                             "content": response["message"]
                         }
                         pub.publish(reply_message, produce_routing_key)
+            for user in to_del:
+                if user in user_status:
+                    del user_status[user]
+                    logger.info(f"Matching stopped for user {user} due to inactivity for 15 minutes")
+                if user in idle_status:
+                    del idle_status[user]
     except (KeyboardInterrupt, SystemExit):
         logger.info("Shutting down task matching loop...")
     except Exception as e:
@@ -528,9 +541,10 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                     "content": "custom",
                 }
         """
-        message = None
+        message = ""
         if payload["userid"] not in user_status:
             user_status[payload["userid"]] = {"last_active": None, "interval": 5000}
+            logger.info(f"Task matching for user {payload['userid']} has started...")
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
             # stop recording --> create ShareFlow
@@ -560,8 +574,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
 
         reply_message = {
             "client_id": payload['client_id'],
-            "state": message,
-            "content": payload['type']
+            "state": "SUCCESS",
+            "content": message
         }
 
         # Implementation
