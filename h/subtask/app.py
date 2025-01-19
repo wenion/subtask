@@ -3,40 +3,7 @@ import pyramid
 from h.config import configure
 from h.security import StreamerPolicy
 from h.sentry_filters import SENTRY_FILTERS
-from nosql.process_model import fetch_all_process_model, delete_process_model
-from nosql.user_event_record import fetch_user_event_record_by_session_id
-import logging
-from logging.handlers import RotatingFileHandler
-from pm4py.objects.petri_net.importer import importer as pnml_importer
-from datetime import datetime
-import pytz
 
-logger = logging.getLogger("TAD")
-logger.setLevel(logging.INFO)
-handler = RotatingFileHandler("task_classification.log", maxBytes=5120000, backupCount=5000)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logging.Formatter.converter = lambda *args: datetime.now(tz=pytz.timezone('Australia/Melbourne')).timetuple()
-#formatter.converter = time.localtime
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.info("Service Starting...")
-all_process_models = {}
-
-
-def load_all_process_models():
-    process_models = fetch_all_process_model()
-    if process_models:
-        for pm in process_models:
-            record = fetch_user_event_record_by_session_id(session_id=pm.session_id, userid=pm.creator)
-            if not record:
-                # if Shareflow doesn't exist, delete the PM
-                delete_process_model(pm.pk)
-                print(f"{pm.pm_name} {pm.session_id} {pm.creator} NOT FOUND UPON CHECKING AND DELETED")
-                continue
-            pm_string = pm.pm_content
-            net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
-            all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
-            logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
 
 
 def create_app(_global_config, **settings):
@@ -88,7 +55,4 @@ def create_app(_global_config, **settings):
     # Add support for logging exceptions whenever they arise
     config.include("pyramid_exclog")
     config.add_settings({"exclog.extra_info": True})
-    logger.info("Loading Process Models...")
-    load_all_process_models()
-    logger.info("Service Started!!")
     return config.make_wsgi_app()

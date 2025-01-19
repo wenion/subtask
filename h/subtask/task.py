@@ -19,6 +19,8 @@ from nosql import fetch_user_event, fetch_all_user_event, fetch_all_events_by_ta
 from nosql import add_task_page, delete_task_page, delete_task_page_name_id, fetch_user_event_record_by_session_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
 from nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
 from nosql import is_task_page, stop_pushing
+from nosql.process_model import fetch_all_process_model, delete_process_model
+from nosql.user_event_record import fetch_user_event_record_by_session_id
 import pandas as pd
 import numpy as np
 import urllib.parse
@@ -30,7 +32,6 @@ from pm4py.util.constants import DEFAULT_ENCODING
 from pm4py.visualization.petri_net import visualizer
 import random
 import pm4py
-from app import logger, all_process_models
 import json
 
 
@@ -39,6 +40,39 @@ TASK_EXCHANGE = "process.task"
 
 user_status = {}
 translation_table = str.maketrans(string.punctuation, '_'*len(string.punctuation))
+
+logger = logging.getLogger("TAD")
+logger.setLevel(logging.INFO)
+handler = RotatingFileHandler("task_classification.log", maxBytes=5120000, backupCount=5000)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.Formatter.converter = lambda *args: datetime.now(tz=pytz.timezone('Australia/Melbourne')).timetuple()
+#formatter.converter = time.localtime
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.info("Service Starting...")
+
+all_process_models = {}
+
+
+def load_all_process_models():
+    process_models = fetch_all_process_model()
+    if process_models:
+        for pm in process_models:
+            record = fetch_user_event_record_by_session_id(session_id=pm.session_id, userid=pm.creator)
+            if not record:
+                # if Shareflow doesn't exist, delete the PM
+                delete_process_model(pm.pk)
+                print(f"{pm.pm_name} {pm.session_id} {pm.creator} NOT FOUND UPON CHECKING AND DELETED")
+                continue
+            pm_string = pm.pm_content
+            net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
+            all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
+            logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
+
+
+logger.info("Loading Process Models...")
+load_all_process_models()
+logger.info("Service Started!!")
 
 
 def convert_log_to_formatted(event_log):
