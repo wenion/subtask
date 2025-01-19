@@ -582,7 +582,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         # ------- remove -------
 
         pub.publish(reply_message, produce_routing_key)
-
+    logger.info("Ummm....")
     sub = Sub(
         settings,
         TRACE_EXCHANGE,
