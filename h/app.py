@@ -97,6 +97,8 @@ def includeme(config):  # pragma: no cover
     config.include("h.links")
     config.include("h.notification")
 
+    config.include("h.subtask.nosql")
+
     _configure_sentry(config)
 
     # pyramid-sanity should be activated as late as possible
