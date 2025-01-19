@@ -13,14 +13,14 @@ from logging.handlers import RotatingFileHandler
 import pytz
 from datetime import datetime, timedelta
 import string
-from nosql import fetch_user_event, fetch_all_user_event, fetch_all_events_by_task_name, \
+from h.subtask.nosql import fetch_user_event, fetch_all_user_event, fetch_all_events_by_task_name, \
     fetch_all_user_events_by_session, fetch_all_user_event_within_time, create_process_model, \
     delete_process_model_by_session_creator, fetch_all_process_model, same_as_previous
-from nosql import add_task_page, delete_task_page, delete_task_page_name_id, fetch_user_event_record_by_session_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
-from nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
-from nosql import is_task_page, stop_pushing
-from nosql.process_model import fetch_all_process_model, delete_process_model
-from nosql.user_event_record import fetch_user_event_record_by_session_id
+from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_name_id, fetch_user_event_record_by_session_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
+from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
+from h.subtask.nosql import is_task_page, stop_pushing
+from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model
+from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id
 import pandas as pd
 import numpy as np
 import urllib.parse
