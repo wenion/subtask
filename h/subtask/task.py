@@ -400,7 +400,7 @@ def task_classification(url, user_id, interval=None):
         logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
         return next_request_result
 
-    pr = add_push_record(timestamp=datetime.now().timestamp(),
+    pr = add_push_record(timestamp=int(datetime.now().timestamp()),
                          push_type="SF",
                          push_to=user_id,
                          push_content=push_message,
