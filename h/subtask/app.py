@@ -1,7 +1,7 @@
 import pyramid
 
 from h.config import configure
-from h.security import StreamerPolicy
+#from h.security import StreamerPolicy
 from h.sentry_filters import SENTRY_FILTERS
 
 
@@ -11,19 +11,19 @@ def create_app(_global_config, **settings):
 
     config.include("pyramid_services")
 
-    config.include("h.security")
+    #config.include("h.security")
     # Override the default authentication policy.
-    config.set_security_policy(StreamerPolicy())
+    #config.set_security_policy(StreamerPolicy())
 
     config.include("h.db")
-    config.include("h.session")
-    config.include("h.services")
+    #config.include("h.session")
+    #config.include("h.services")
     # include redis nosql codes -- Steve
     config.include("h.subtask.nosql")
 
     # We include links in order to set up the alternative link registrations
     # for annotations.
-    config.include("h.links")
+    #config.include("h.links")
 
     # And finally we add routes. Static routes are not resolvable by HTTP
     # clients, but can be used for URL generation within the websocket server.
@@ -37,10 +37,12 @@ def create_app(_global_config, **settings):
 
     # config.scan("h.subtask.views")
     config.scan("h.subtask.streamer")
+    '''
     config.add_tween(
         "h.streamer.tweens.close_db_session_tween_factory",
         over=["pyramid_exclog.exclog_tween_factory", pyramid.tweens.EXCVIEW],
     )
+    '''
 
     # Configure sentry
     config.add_settings(

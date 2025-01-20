@@ -1,4 +1,4 @@
-from h.tasks import indexer, job_queue
+#from h.tasks import indexer, job_queue
 
 RETRY_POLICY_QUICK = {
     "max_retries": 2,

@@ -6,7 +6,7 @@ import gevent
 from pyramid.events import ApplicationCreated, subscriber
 
 from h.subtask import db
-from h.subtask.metrics import metrics_process
+#from h.subtask.metrics import metrics_process
 from h.pubsub import Sub, Pub
 
 from logging.handlers import RotatingFileHandler
@@ -541,6 +541,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                     "content": "custom",
                 }
         """
+        print("payload", payload["type"], payload["custom"], payload["label"])
         message = ""
         if payload["userid"] not in user_status:
             user_status[payload["userid"]] = {"last_active": None, "interval": 5000}
