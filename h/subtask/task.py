@@ -439,9 +439,13 @@ def send_push(settings, produce_routing_key):
                     user_status[user]["interval"] = response["interval"]
                     if response["show_flag"]:
                         reply_message = {
-                            "title": "ShareFlow Notification",
                             "client_id": client_id,
-                            "state": "SUCCESS",
+                            "type": "ShareFlow Notification",
+                            "title": "Need help with this task?",
+                            "message": "message",
+                            "timestamp": current_time,
+                            "extra": [],
+                            "url": url,
                             "content": response["message"]
                         }
                         pub.publish(reply_message, produce_routing_key)
@@ -575,9 +579,14 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         # Implementation
 
         reply_message = {
-            "title": "ShareFlow Notification",
             "client_id": payload['client_id'],
-            "state": "SUCCESS",
+            "type": "ShareFlow Recording (TAD)",
+            "title": "ShareFlow Recording Ended",
+            "message": "message",
+            "timestamp": payload["timestamp"],
+            "extra": [],
+            "url": payload["url"],
+            #"state": "SUCCESS",
             "content": message
         }
 
