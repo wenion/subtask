@@ -179,6 +179,8 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
         }
     sf_name = shareflow_name.translate(translation_table)
     current_timestamp = int(datetime.now().timestamp() * 1000)
+    if not os.path.exists("process_models"):
+        os.makedirs("process_models")
     file_path = f"process_models/{sf_name}_{current_timestamp}.pnml"
     pm4py.write_pnml(net, im, fm, file_path)
     try:
