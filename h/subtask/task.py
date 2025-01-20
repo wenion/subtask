@@ -443,11 +443,12 @@ def send_push(settings, produce_routing_key):
                 if current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
-                    client_id = status["client_id"]
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     if response["show_flag"]:
                         gevent.sleep(0.1)
+                        client_id = status["client_id"]
+                        print("Push Client_ID", client_id)
                         reply_message = {
                             "client_id": client_id,
                             "type": "ShareFlow Notification",
@@ -605,7 +606,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["url"] = payload["url"]
             user_status[payload["userid"]]["active_window"] = payload["windowId"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
-
+            print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]
         #    task_classification(url, user_id, interval=None)
