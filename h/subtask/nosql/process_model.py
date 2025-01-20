@@ -16,7 +16,7 @@ class ProcessModel(JsonModel):
     group: str = Field(index=True) #the permitted groups for the ShareFlow public_id
     pm_name: str = Field(index=True)#process model name
     pm_content: str = Field(index=True)# process model content
-    session_id: str = Field(index=True)
+    session_id: str = Field(index=True) # session_id is actually the pk of ShareFlow (user_event_record)
 
 
 def fetch_all_process_model():

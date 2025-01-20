@@ -20,7 +20,7 @@ from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_na
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
 from h.subtask.nosql import is_task_page, stop_pushing
 from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model
-from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id
+from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
 import pandas as pd
 import numpy as np
 import urllib.parse
@@ -59,14 +59,11 @@ def load_all_process_models():
     process_models = fetch_all_process_model()
     if process_models:
         for pm in process_models:
-            print(pm.session_id, pm.creator)
-            print(fetch_user_event_record_by_session(session_id=pm.session_id))
-            record = fetch_user_event_record_by_session_id(session_id=pm.session_id, userid=pm.creator)
-            print(record)
+            record = fetch_user_event_record_by_pk(pk=pm.session_id)
             if not record:
                 # if Shareflow doesn't exist, delete the PM
                 delete_process_model(pm.pk)
-                print(f"{pm.pm_name} {pm.session_id} {pm.creator} NOT FOUND UPON CHECKING AND DELETED")
+                logger.error(f"{pm.pm_name} {pm.session_id} {pm.creator} NOT FOUND UPON CHECKING AND DELETED")
                 continue
             pm_string = pm.pm_content
             net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
