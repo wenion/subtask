@@ -18,7 +18,7 @@ class UserEventRecord(JsonModel):
     description: str = Field(full_text_search=True, sortable=True)
     target_uri: Optional[str]
     start: Optional[int]
-    backdate: Optional[int] = None
+    backdate: Optional[int] = 0
     completed: int = Field(index=True)
     userid: str = Field(index=True)
     groupid: str = Field(index=True)
@@ -45,8 +45,3 @@ def fetch_user_event_record_by_session(session_id):
     total = query.all()
     return total[0] if len(total) > 0 else None
 
-
-def fetch_user_event_record_by_user(userid):
-    query = UserEventRecord.find(UserEventRecord.userid == userid)
-    total = query.all()
-    return total[0] if len(total) > 0 else None
