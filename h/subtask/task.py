@@ -447,7 +447,7 @@ def send_push(settings, produce_routing_key):
                     user_status[user]["interval"] = response["interval"]
                     if response["show_flag"]:
                         gevent.sleep(0.1)
-                        client_id = status["client_id"]
+                        client_id = user_status[user]["client_id"]
                         print("Push Client_ID", client_id)
                         reply_message = {
                             "client_id": client_id,
