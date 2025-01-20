@@ -455,6 +455,7 @@ def send_push(settings, produce_routing_key):
                     logger.info(f"Matching stopped for user {user} due to inactivity for 15 minutes")
                 if user in idle_status:
                     del idle_status[user]
+            gevent.sleep(0.1)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Shutting down task matching loop...")
     except Exception as e:
@@ -564,6 +565,24 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 logger.error(outcome["message"])
             else:
                 message = outcome["message"]
+
+            reply_message = {
+                "client_id": payload['client_id'],
+                "type": "ShareFlow Recording (TAD)",
+                "title": "ShareFlow Recording Ended",
+                "message": "message",
+                "timestamp": payload["timestamp"],
+                "extra": [],
+                "url": payload["url"],
+                # "state": "SUCCESS",
+                "content": message
+            }
+
+            # Implementation
+            # ------- remove -------
+
+            pub.publish(reply_message, produce_routing_key)
+
         elif payload["messageType"] == "TraceData":
             # task classification info
             user_status[payload["userid"]]["last_active"] = payload["timestamp"]
@@ -578,22 +597,6 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         # ------- remove -------
         # Implementation
 
-        reply_message = {
-            "client_id": payload['client_id'],
-            "type": "ShareFlow Recording (TAD)",
-            "title": "ShareFlow Recording Ended",
-            "message": "message",
-            "timestamp": payload["timestamp"],
-            "extra": [],
-            "url": payload["url"],
-            #"state": "SUCCESS",
-            "content": message
-        }
-
-        # Implementation
-        # ------- remove -------
-
-        pub.publish(reply_message, produce_routing_key)
 
     sub = Sub(
         settings,
