@@ -31,7 +31,7 @@ def start(event):  # pragma: no cover
 
     greenlets = [
         gevent.spawn(process_messages, settings, TRACE_TOPIC, TASK_TOPIC),
-        #gevent.spawn(send_push, settings, TASK_TOPIC)
+        gevent.spawn(send_push, settings, TASK_TOPIC)
     ]
 
     # Start a "greenlet of last resort" to monitor the worker greenlets and
