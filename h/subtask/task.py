@@ -329,6 +329,10 @@ def task_classification(url, user_id, interval=None):
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
     print(match_scores)
+    if len(match_scores.keys()) == 0:
+        logger.warning("No PM for matching yet...")
+        return next_request_result
+
     task = list(match_scores.keys())[0]
     match_score = match_scores[task]
     # not pushing if all match scores below threshold
