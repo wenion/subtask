@@ -562,8 +562,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             if not user_status[payload["userid"]]["last_match"]:
                 user_status[payload["userid"]]["last_match"] = current_time
             user_id = payload["userid"]
-            shareflow_name = payload["task_name"]
-            session_id = payload["session_id"]
+            shareflow_name = payload["taskName"]
+            session_id = payload["sessionId"]
             group_id = "__world__"
             outcome = create_pm(user_id, shareflow_name, session_id, group_id)
             if not outcome["created"]:
