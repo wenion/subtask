@@ -298,7 +298,7 @@ def task_classification(url, user_id, interval=None):
     trace = pd.DataFrame(result["table_result"])
 
     if trace is None or len(trace) < 2:
-        if trace and len(trace) == 0:
+        if len(trace) == 0:
             if user_id not in idle_status:
                 idle_status[user_id] = 0
             idle_status[user_id] += 1
@@ -548,6 +548,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 }
         """
         print("payload", payload["type"], payload["custom"], payload["label"])
+        current_time = datetime.now().timestamp() * 1000
         message = ""
         if payload["userid"] not in user_status:
             user_status[payload["userid"]] = {"last_active": None, "interval": 5000}
@@ -555,7 +556,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
             # stop recording --> create ShareFlow
-            user_status[payload["userid"]]["last_active"] = payload["timestamp"]
+            user_status[payload["userid"]]["last_active"] = current_time
             user_id = payload["userid"]
             shareflow_name = payload["task_name"]
             session_id = payload["session_id"]
@@ -585,7 +586,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
 
         elif payload["messageType"] == "TraceData":
             # task classification info
-            user_status[payload["userid"]]["last_active"] = payload["timestamp"]
+            user_status[payload["userid"]]["last_active"] = current_time
             user_status[payload["userid"]]["url"] = payload["url"]
             user_status[payload["userid"]]["active_window"] = payload["windowId"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
