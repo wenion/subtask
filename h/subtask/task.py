@@ -572,7 +572,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 logger.error(outcome["message"])
             else:
                 message = outcome["message"]
-
+            logger.info(message)
             reply_message = {
                 "client_id": payload['client_id'],
                 "type": "ShareFlow Recording (TAD)",
