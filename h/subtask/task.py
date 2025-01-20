@@ -427,6 +427,7 @@ def task_classification(url, user_id, interval=None):
 
 
 def send_push(settings, produce_routing_key):
+    global user_status
     pub = Pub(settings, TASK_EXCHANGE)
     logger.info("Task matching loop started...")
     try:
@@ -560,6 +561,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 }
         """
         print("payload", payload["type"], payload["custom"], payload["label"])
+        global user_status
         current_time = datetime.now().timestamp() * 1000
         message = ""
         if payload["userid"] not in user_status:
