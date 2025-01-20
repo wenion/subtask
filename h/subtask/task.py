@@ -432,6 +432,9 @@ def send_push(settings, produce_routing_key):
                 elif interval >= 900000:
                     to_del.append(user)
                     continue
+                print("Current", current_time)
+                print("Last Active", status["last_active"])
+                print("Interval", interval, "Diff", current_time - status["last_active"])
                 if current_time - status["last_active"] >= interval:
                     url = status["url"]
                     client_id = status["client_id"]
