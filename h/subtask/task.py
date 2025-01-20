@@ -435,7 +435,7 @@ def send_push(settings, produce_routing_key):
                 print("Current", current_time)
                 print("Last Active", status["last_active"])
                 print("Interval", interval, "Diff", current_time - status["last_active"])
-                if current_time - status["last_active"] >= interval:
+                if current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
                     url = status["url"]
                     client_id = status["client_id"]
                     response = task_classification(url, user, interval)
@@ -452,6 +452,7 @@ def send_push(settings, produce_routing_key):
                             "content": response["message"]
                         }
                         pub.publish(reply_message, produce_routing_key)
+                    user_status[user]["last_match"] = current_time
             for user in to_del:
                 if user in user_status:
                     del user_status[user]
@@ -554,12 +555,14 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         current_time = datetime.now().timestamp() * 1000
         message = ""
         if payload["userid"] not in user_status:
-            user_status[payload["userid"]] = {"last_active": None, "interval": 5000}
+            user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None}
             logger.info(f"Task matching for user {payload['userid']} has started...")
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
             # stop recording --> create ShareFlow
             user_status[payload["userid"]]["last_active"] = current_time
+            if not user_status[payload["userid"]]["last_match"]:
+                user_status[payload["userid"]]["last_match"] = current_time
             user_id = payload["userid"]
             shareflow_name = payload["task_name"]
             session_id = payload["session_id"]
@@ -590,6 +593,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         elif payload["messageType"] == "TraceData":
             # task classification info
             user_status[payload["userid"]]["last_active"] = current_time
+            if not user_status[payload["userid"]]["last_match"]:
+                user_status[payload["userid"]]["last_match"] = current_time
             user_status[payload["userid"]]["url"] = payload["url"]
             user_status[payload["userid"]]["active_window"] = payload["windowId"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
