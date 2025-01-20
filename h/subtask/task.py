@@ -186,6 +186,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     try:
         with open(file_path, 'r') as file:
             pnml_data = file.read()
+            print(user_id, current_timestamp, group_id, shareflow_name, session_id)
             status = create_process_model(creator=user_id,
                                           create_time=current_timestamp,
                                           group=group_id,
@@ -442,6 +443,7 @@ def send_push(settings, produce_routing_key):
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     if response["show_flag"]:
+                        gevent.sleep(0.1)
                         reply_message = {
                             "client_id": client_id,
                             "type": "ShareFlow Notification",
