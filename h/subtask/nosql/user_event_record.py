@@ -18,7 +18,7 @@ class UserEventRecord(JsonModel):
     description: str = Field(full_text_search=True, sortable=True)
     target_uri: Optional[str]
     start: Optional[int]
-    backdate: Optional[int]
+    backdate: Optional[int] = None
     completed: int = Field(index=True)
     userid: str = Field(index=True)
     groupid: str = Field(index=True)
