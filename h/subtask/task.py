@@ -562,7 +562,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         """
 
         # TODO: change implementation to use windowId and TabId, ClientId will not work properly
-        print("payload", payload)
+        print("payload", payload["messageType"], payload["type"])
         global user_status
         current_time = datetime.now().timestamp() * 1000
         message = ""
