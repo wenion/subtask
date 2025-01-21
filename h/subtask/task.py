@@ -402,10 +402,10 @@ def task_classification(url, user_id, interval=None):
                             push_type="SF",
                             push_content=push_message,
                             additional_info=json.dumps(task_details))
-    # TODO: uncomment this
-    # if same:
-    #     logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
-    #     return next_request_result
+
+    if same:
+        logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
+        return next_request_result
 
     pr = add_push_record(timestamp=int(datetime.now().timestamp()),
                          push_type="SF",
@@ -450,10 +450,8 @@ def send_push(settings, produce_routing_key):
                     client_id = status["client_id"]
                     if response["show_flag"]:
                         gevent.sleep(0.1)
-                        print(user_status)
-                        print(client_id)
                         reply_message = {
-                            "client_id": client_id,
+                            "client_id": user_status[user]["client_id"],
                             "type": "ShareFlow Notification",
                             "title": "Need help with this task?",
                             "message": "message",
