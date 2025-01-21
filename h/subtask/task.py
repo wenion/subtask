@@ -451,6 +451,7 @@ def send_push(settings, produce_routing_key):
                     if response["show_flag"]:
                         gevent.sleep(0.1)
                         print(user_status)
+                        print(client_id)
                         reply_message = {
                             "client_id": client_id,
                             "type": "ShareFlow Notification",
