@@ -446,10 +446,10 @@ def send_push(settings, produce_routing_key):
                     url = status["url"]
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
+                    client_id = status["client_id"]
                     if response["show_flag"]:
                         gevent.sleep(0.1)
-                        client_id = user_status[user]["client_id"]
-                        print("Push Client_ID", client_id)
+                        print(user_status)
                         reply_message = {
                             "client_id": client_id,
                             "type": "ShareFlow Notification",
@@ -560,6 +560,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                     "content": "custom",
                 }
         """
+
+        # TODO: change implementation to use windowId and TabId, ClientId will not work properly
         print("payload", payload["type"], payload["custom"], payload["label"])
         global user_status
         current_time = datetime.now().timestamp() * 1000
@@ -583,22 +585,22 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             else:
                 message = outcome["message"]
             logger.info(message)
-            reply_message = {
-                "client_id": payload['client_id'],
-                "type": "ShareFlow Recording (TAD)",
-                "title": "ShareFlow Recording Ended",
-                "message": "message",
-                "timestamp": payload["timestamp"],
-                "extra": [],
-                "url": payload["url"],
-                # "state": "SUCCESS",
-                "content": message
-            }
-
-            # Implementation
-            # ------- remove -------
-
-            pub.publish(reply_message, produce_routing_key)
+            # reply_message = {
+            #     "client_id": payload['client_id'],
+            #     "type": "ShareFlow Recording (TAD)",
+            #     "title": "ShareFlow Recording Ended",
+            #     "message": "message",
+            #     "timestamp": payload["timestamp"],
+            #     "extra": [],
+            #     "url": payload["url"],
+            #     # "state": "SUCCESS",
+            #     "content": message
+            # }
+            #
+            # # Implementation
+            # # ------- remove -------
+            #
+            # pub.publish(reply_message, produce_routing_key)
 
         elif payload["messageType"] == "TraceData":
             # task classification info
