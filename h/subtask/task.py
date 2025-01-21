@@ -402,9 +402,10 @@ def task_classification(url, user_id, interval=None):
                             push_type="SF",
                             push_content=push_message,
                             additional_info=json.dumps(task_details))
-    if same:
-        logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
-        return next_request_result
+    # TODO: uncomment this
+    # if same:
+    #     logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
+    #     return next_request_result
 
     pr = add_push_record(timestamp=int(datetime.now().timestamp()),
                          push_type="SF",
