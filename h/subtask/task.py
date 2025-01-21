@@ -608,7 +608,6 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             if not user_status[payload["userid"]]["last_match"]:
                 user_status[payload["userid"]]["last_match"] = current_time
             user_status[payload["userid"]]["url"] = payload["url"]
-            user_status[payload["userid"]]["active_window"] = payload["windowId"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
