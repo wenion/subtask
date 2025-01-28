@@ -291,7 +291,7 @@ def task_classification(url, user_id, interval=None):
         logger.info(user_id + ": Stop pushing criteria matched")
         return {"task_name": "", "certainty": 0, "message": "", "interval": 60000, "task_ids": [], "task_details": [], "show_flag": False}
 
-    time_delta = 25 # TODO: change back to 11
+    time_delta = 11
     interval_in_second = interval / 1000
     if interval_in_second > time_delta:
         time_delta = interval_in_second
