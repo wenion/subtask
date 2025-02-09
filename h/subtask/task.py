@@ -460,6 +460,7 @@ def send_push(settings, produce_routing_key):
                             "url": url,
                             "content": response["message"]
                         }
+                        print(reply_message)
                         pub.publish(reply_message, produce_routing_key)
                     user_status[user]["last_match"] = current_time
             for user in to_del:
