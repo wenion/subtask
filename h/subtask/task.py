@@ -448,6 +448,7 @@ def send_push(settings, produce_routing_key):
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
+                    print(user_status)
                     if response["show_flag"]:
                         gevent.sleep(0.1)
                         reply_message = {
