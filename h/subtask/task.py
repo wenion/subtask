@@ -451,7 +451,6 @@ def send_push(settings, produce_routing_key):
                 if current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
-                    gevent.sleep(0.1)
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
