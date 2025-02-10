@@ -349,15 +349,18 @@ def task_classification(url, user_id, interval=None):
     for key, value in match_scores.items():
         if value == match_score:
             count += 1
-            t_name, t_id = key.split("_[SEP]_")
+            t_name, t_id = key.split("_[SEP]_")  # t_id has been updated to pk of shareflow
             matched_tasks.append(t_name)
-            shareflow = fetch_user_event_record_by_session(t_id)
+            shareflow = fetch_user_event_record_by_pk(t_id)
             if shareflow:
-                task_details.append({"pk": shareflow.pk,
-                                     "session_id": shareflow.session_id,
-                                     "user_id": shareflow.userid,
-                                     "task_name": shareflow.task_name,
-                                     "certainty": value})
+                # task_details.append({"pk": shareflow.pk,
+                #                      "session_id": shareflow.session_id,
+                #                      "user_id": shareflow.userid,
+                #                      "task_name": shareflow.task_name,
+                #                      "certainty": value})
+                task_details.append({"user_id": shareflow.userid,
+                                     "session_id": shareflow.pk,
+                                     "task_name": shareflow.task_name})
                 tids.append(shareflow.pk)
     # if match_score > 0.9:
     # # same highest scores; TODO: should we show all when we have multiple same highest > 0.9?
@@ -378,9 +381,9 @@ def task_classification(url, user_id, interval=None):
         for key, value in match_scores.items():
             if count == 3 or value < 0.34:
                 break
-            t_name, t_id = key.split("_[SEP]_")
+            t_name, t_id = key.split("_[SEP]_") # t_id has been updated to pk of shareflow
             matched_tasks.append(t_name)
-            shareflow = fetch_user_event_record_by_session(t_id)
+            shareflow = fetch_user_event_record_by_pk(t_id)
             if shareflow:
                 # task_details.append({"pk": shareflow.pk,
                 #                      "session_id": shareflow.session_id,
