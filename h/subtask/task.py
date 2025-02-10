@@ -300,7 +300,7 @@ def task_classification(url, user_id, interval=None):
     result = fetch_all_user_event_within_time(user_id, time_ago)
     trace = pd.DataFrame(result["table_result"])
 
-    if trace is None or len(trace) < 2:
+    if trace is None or len(trace) < 1:
         if len(trace) == 0:
             if user_id not in idle_status:
                 idle_status[user_id] = 0
