@@ -336,7 +336,7 @@ def task_classification(url, user_id, interval=None):
     task = list(match_scores.keys())[0]
     match_score = match_scores[task]
     # not pushing if all match scores below threshold
-    if match_score < 0.34:
+    if match_score < 0.25:
         logger.warning(user_id + ": No task matching")
         return next_request_result
 
@@ -379,7 +379,7 @@ def task_classification(url, user_id, interval=None):
         tids = []
         count = 0
         for key, value in match_scores.items():
-            if count == 3 or value < 0.34:
+            if count == 3 or value < 0.25: # TODO: may need to tune the threshold again
                 break
             t_name, t_id = key.split("_[SEP]_") # t_id has been updated to pk of shareflow
             matched_tasks.append(t_name)
