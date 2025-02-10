@@ -382,11 +382,14 @@ def task_classification(url, user_id, interval=None):
             matched_tasks.append(t_name)
             shareflow = fetch_user_event_record_by_session(t_id)
             if shareflow:
-                task_details.append({"pk": shareflow.pk,
-                                     "session_id": shareflow.session_id,
-                                     "user_id": shareflow.userid,
-                                     "task_name": shareflow.task_name,
-                                     "certainty": value})
+                # task_details.append({"pk": shareflow.pk,
+                #                      "session_id": shareflow.session_id,
+                #                      "user_id": shareflow.userid,
+                #                      "task_name": shareflow.task_name,
+                #                      "certainty": value})
+                task_details.append({"user_id": shareflow.userid,
+                                     "session_id": shareflow.pk,
+                                     "task_name": shareflow.task_name})
                 tids.append(shareflow.pk)
             count += 1
     else:
@@ -457,7 +460,7 @@ def send_push(settings, produce_routing_key):
                             "title": "Need help with this task?",
                             "message": "message",
                             "timestamp": current_time,
-                            "extra": [],
+                            "extra": response["task_details"],
                             "url": url,
                             "content": response["message"]
                         }
