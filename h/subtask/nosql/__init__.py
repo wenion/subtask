@@ -262,6 +262,9 @@ def fetch_all_events_by_user_task_name(user_id, task_name):
 
 
 def fetch_all_user_events_by_session(userid, sessionID):
+    if not userid or not sessionID:
+        print("Invalid user id or session id")
+        return []
     result = UserEvent.find((UserEvent.userid == userid) & (UserEvent.session_id == sessionID)).sort_by("timestamp").all()
     #.sort_by("-timestamp")
     table_result = []
