@@ -150,6 +150,8 @@ class UserEvent(JsonModel):
     height: Optional[int] = Field(full_text_search=True, sortable=True)
     image: Optional[str]
     title: Optional[str] = Field(full_text_search=True, sortable=True)
+    label: Optional[str] = Field(full_text_search=True, sortable=True)
+    action_type: Optional[str] = Field(full_text_search=True, sortable=True)
 
 
 def add_user_event(
