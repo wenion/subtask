@@ -616,6 +616,10 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["last_active"] = current_time
             if not user_status[payload["userid"]]["last_match"]:
                 user_status[payload["userid"]]["last_match"] = current_time
+            if payload["userid"] in idle_status and int(idle_status[payload["userid"]] / 12) >= 5:
+                # if user becomes active again, reactivate task matching
+                idle_status[payload["userid"]] = 0
+                user_status[payload["userid"]]["interval"] = 5000
             user_status[payload["userid"]]["url"] = payload["url"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
