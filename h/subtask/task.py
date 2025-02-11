@@ -618,6 +618,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 user_status[payload["userid"]]["last_match"] = current_time
             user_status[payload["userid"]]["url"] = payload["url"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
+            if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
+                user_status[payload["userid"]]["interval"] = 5000
             print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]
