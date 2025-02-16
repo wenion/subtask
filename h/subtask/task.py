@@ -333,7 +333,7 @@ def task_classification(url, user_id, interval=None):
         logger.warning("No PM for matching yet...")
         return next_request_result
 
-    task = list(match_scores.keys())[0]
+    task = list(match_scores.keys())[0] # highest matched task
     match_score = match_scores[task]
     # not pushing if all match scores below threshold
     if match_score < 0.25:
@@ -346,43 +346,12 @@ def task_classification(url, user_id, interval=None):
     matched_tasks = []
     task_details = []
     tids = []
-    for key, value in match_scores.items():
-        if value == match_score:
-            count += 1
-            t_name, t_id = key.split("_[SEP]_")  # t_id has been updated to pk of shareflow
-            matched_tasks.append(t_name)
-            shareflow = fetch_user_event_record_by_pk(t_id)
-            if shareflow:
-                # task_details.append({"pk": shareflow.pk,
-                #                      "session_id": shareflow.session_id,
-                #                      "user_id": shareflow.userid,
-                #                      "task_name": shareflow.task_name,
-                #                      "certainty": value})
-                task_details.append({"user_id": shareflow.userid,
-                                     "session_id": shareflow.pk,
-                                     "task_name": shareflow.task_name})
-                tids.append(shareflow.pk)
-    # if match_score > 0.9:
-    # # same highest scores; TODO: should we show all when we have multiple same highest > 0.9?
-    #     logger.info(f"Tasks identified for {user_id}: {'; '.join(matched_tasks)} with score {match_score}")
-    #     return {
-    #         "task_name": "; ".join(matched_tasks),
-    #         "certainty": match_score,
-    #         "message": "The following tasks may be relevant: " + "; ".join(matched_tasks),
-    #         "interval": 7000,
-    #         "task_ids": tids
-    #     }
     if match_score <= 0.9:
-        # if match score <= 0.9, get top n (max 3) whose score <= 0.9 but >= 0.34
-        matched_tasks = []
-        task_details = []
-        tids = []
-        count = 0
+        # if match score <= 0.9, get top n (max 3) whose score <= 0.9 but >= 0.25
         for key, value in match_scores.items():
             if count == 3 or value < 0.25: # TODO: may need to tune the threshold again
                 break
             t_name, t_id = key.split("_[SEP]_") # t_id has been updated to pk of shareflow
-            matched_tasks.append(t_name)
             shareflow = fetch_user_event_record_by_pk(t_id)
             if shareflow:
                 # task_details.append({"pk": shareflow.pk,
@@ -390,12 +359,36 @@ def task_classification(url, user_id, interval=None):
                 #                      "user_id": shareflow.userid,
                 #                      "task_name": shareflow.task_name,
                 #                      "certainty": value})
+                if shareflow.userid == user_id:
+                    logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
+                    continue
                 task_details.append({"user_id": shareflow.userid,
                                      "session_id": shareflow.pk,
                                      "task_name": shareflow.task_name})
                 tids.append(shareflow.pk)
-            count += 1
+                matched_tasks.append(t_name)
+                count += 1
     else:
+        for key, value in match_scores.items():
+            if value == match_score:
+                t_name, t_id = key.split("_[SEP]_")  # t_id has been updated to pk of shareflow
+                shareflow = fetch_user_event_record_by_pk(t_id)
+                if shareflow:
+                    # task_details.append({"pk": shareflow.pk,
+                    #                      "session_id": shareflow.session_id,
+                    #                      "user_id": shareflow.userid,
+                    #                      "task_name": shareflow.task_name,
+                    #                      "certainty": value})
+                    if shareflow.userid == user_id:
+                        # if the PM creator is the current user, don't append it to the list
+                        logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
+                        continue
+                    task_details.append({"user_id": shareflow.userid,
+                                         "session_id": shareflow.pk,
+                                         "task_name": shareflow.task_name})
+                    tids.append(shareflow.pk)
+                    matched_tasks.append(t_name)
+                    count += 1
         # randomly select one highest Shareflow if there are multiple matching
         matched_task_idx = random.choice(list(range(len(matched_tasks))))
         logger.info(f"Tasks identified for {user_id}: {matched_tasks[matched_task_idx]} with score {match_score}")
@@ -594,22 +587,28 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             else:
                 message = outcome["message"]
             logger.info(message)
-            # reply_message = {
-            #     "client_id": payload['client_id'],
-            #     "type": "ShareFlow Recording (TAD)",
-            #     "title": "ShareFlow Recording Ended",
-            #     "message": "message",
-            #     "timestamp": payload["timestamp"],
-            #     "extra": [],
-            #     "url": payload["url"],
-            #     # "state": "SUCCESS",
-            #     "content": message
-            # }
-            #
-            # # Implementation
-            # # ------- remove -------
-            #
-            # pub.publish(reply_message, produce_routing_key)
+
+        elif payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "delete":
+            user_id = payload["userid"]
+            session_id = payload["sessionId"]
+            shareflow_name = payload["taskName"]
+            result = fetch_user_event_record_by_pk(session_id)
+            if not result or not result["table_result"] or result["total"] == 0:
+                logger.error("ShareFlow not found, incorrect Session ID. Cannot delete process model")
+                return False
+            if f"{shareflow_name}_[SEP]_{session_id}" in all_process_models:
+                del all_process_models[f"{shareflow_name}_[SEP]_{session_id}"]
+            else:
+                logger.warning(f"Process model not found in session, {user_id}, {session_id}")
+            status = delete_process_model_by_session_creator(session_id, user_id)
+            if not status:
+                logger.error(f"Error deleting process model from database, {user_id}, {session_id}")
+                return False
+            deleted = delete_task_page_name_id(shareflow_name, session_id)
+            if not deleted:
+                logger.error(f"Error deleting task page info from database, {user_id}, {session_id}")
+            logger.info(f"PM {shareflow_name}_{session_id} deleted by {user_id}")
+            return True
 
         elif payload["messageType"] == "TraceData":
             # task classification info
