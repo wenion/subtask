@@ -589,11 +589,17 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             logger.info(message)
 
         elif payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "delete":
+            print()
+            print("DELETE EVENT TRIGGERED!!!!!!!!!")
+            print("DELETE EVENT TRIGGERED!!!!!!!!!")
+            print("DELETE EVENT TRIGGERED!!!!!!!!!")
+            print("DELETE EVENT TRIGGERED!!!!!!!!!")
+            print("DELETE EVENT TRIGGERED!!!!!!!!!")
+            print("DELETE EVENT TRIGGERED!!!!!!!!!")
+            print()
             user_id = payload["userid"]
             session_id = payload["sessionId"]
             shareflow_name = payload["taskName"]
-            print(shareflow_name, user_id, session_id)
-            print(payload)
             result = fetch_user_event_record_by_pk(session_id)
             if not result or not result["table_result"] or result["total"] == 0:
                 logger.error("ShareFlow not found, incorrect Session ID. Cannot delete process model")
