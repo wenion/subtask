@@ -441,7 +441,7 @@ def send_push(settings, produce_routing_key):
                 elif interval >= 900000:
                     to_del.append(user)
                     continue
-                if current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
+                if interval and current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
                     gevent.sleep(0.1)
