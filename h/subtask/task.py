@@ -323,8 +323,10 @@ def task_classification(url, user_id, interval=None):
     match_scores = {}
     for k, v in all_process_models.items():
         net, im, fm = v
-        replay_result = pm4py.conformance.fitness_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")
-        fitness = replay_result['average_trace_fitness']
+        replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")
+        fitness = replay_result["trace_fitness"]
+        cur_progress = replay_result["enabled_transitions_in_marking"]
+        print(cur_progress)
         match_scores[k] = fitness
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
@@ -589,14 +591,6 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             logger.info(message)
 
         elif payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "delete":
-            print()
-            print("DELETE EVENT TRIGGERED!!!!!!!!!")
-            print("DELETE EVENT TRIGGERED!!!!!!!!!")
-            print("DELETE EVENT TRIGGERED!!!!!!!!!")
-            print("DELETE EVENT TRIGGERED!!!!!!!!!")
-            print("DELETE EVENT TRIGGERED!!!!!!!!!")
-            print("DELETE EVENT TRIGGERED!!!!!!!!!")
-            print()
             user_id = payload["userid"]
             session_id = payload["sessionId"]
             shareflow_name = payload["taskName"]
