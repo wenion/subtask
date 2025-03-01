@@ -17,6 +17,7 @@ class ProcessModel(JsonModel):
     pm_name: str = Field(index=True)#process model name
     pm_content: str = Field(index=True)# process model content
     session_id: str = Field(index=True) # session_id is actually the pk of ShareFlow (user_event_record)
+    pk_concept_mapping: dict = Field(index=False)
 
 
 def fetch_all_process_model():
@@ -43,7 +44,8 @@ def create_process_model(
         group,
         pm_name,
         pm_content,
-        session_id):
+        session_id,
+        pk_concept_mapping):
     exist = fetch_process_model_by_session_creator(session_id, creator)
     if exist:
         return exist
@@ -53,7 +55,8 @@ def create_process_model(
         group = group,
         pm_name = pm_name,
         pm_content = pm_content,
-        session_id = session_id
+        session_id = session_id,
+        pk_concept_mapping = pk_concept_mapping
     )
     process_model.save()
     return process_model
@@ -91,3 +94,13 @@ def delete_process_model(pk):
         ProcessModel.delete(pk)
     except:
         return False
+
+
+def get_step_pk_timestamp(pm_name, session_id, concept):
+    query = ProcessModel.find((ProcessModel.session_id == session_id) & (ProcessModel.pm_name == pm_name))
+    total = query.all()
+    if len(total) > 0:
+        pm = total[0]
+        if concept in pm.pk_concept_mapping:
+            return pm.pk_concept_mapping[concept]
+    return None

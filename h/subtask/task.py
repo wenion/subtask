@@ -19,7 +19,7 @@ from h.subtask.nosql import fetch_user_event, fetch_all_user_event, fetch_all_ev
 from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_name_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
 from h.subtask.nosql import is_task_page, stop_pushing
-from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model
+from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model, get_step_pk_timestamp
 from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
 import pandas as pd
 import numpy as np
@@ -154,7 +154,7 @@ def create_process_model_from_log(event_log):
         return None, None, None
     formatted_event_log = convert_log_to_formatted(event_log)
     net, im, fm = pm4py.discover_petri_net_heuristics(formatted_event_log, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")
-    return net, im, fm
+    return net, im, fm, formatted_event_log
 
 
 def create_pm(user_id, shareflow_name, session_id, group_id):
@@ -170,8 +170,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
         }
     trace = pd.DataFrame(result["table_result"])
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
-    trace = trace[~trace["base_url"].str.contains("docs.google.com")] # exclude google related events; to be removed in actual evaluation TODO
-    net, im, fm = create_process_model_from_log(trace)
+    net, im, fm, formatted_trace = create_process_model_from_log(trace)
     if not net:
         return {
             "message": "Fail to create process model",
@@ -187,12 +186,18 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
         with open(file_path, 'r') as file:
             pnml_data = file.read()
             print(user_id, current_timestamp, group_id, shareflow_name, session_id)
+            pk_concept_mapping = {}
+            for index, row in formatted_trace.iterrows():
+                if row["concept:name"] not in pk_concept_mapping:
+                    pk_concept_mapping[row["concept:name"]] = []
+                pk_concept_mapping[row["concept:name"]].append((row["pk"], row["timestamp"]))
             status = create_process_model(creator=user_id,
                                           create_time=current_timestamp,
                                           group=group_id,
                                           pm_name=shareflow_name,
                                           pm_content=pnml_data,
-                                          session_id=session_id)
+                                          session_id=session_id,
+                                          pk_concept_mapping=pk_concept_mapping)
             if not status:
                 logger.error("Error occurred during the creation of process model.")
                 return {
@@ -321,16 +326,25 @@ def task_classification(url, user_id, interval=None):
     formatted_trace = convert_log_to_formatted(trace)
 
     match_scores = {}
+    match_steps = {}
     for k, v in all_process_models.items():
         net, im, fm = v
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
         fitness = replay_result["trace_fitness"]
-        cur_progress = replay_result["enabled_transitions_in_marking"]
-        print(cur_progress)
+        cur_progress = list(replay_result["enabled_transitions_in_marking"])
+        progress = (None, float("-inf"))
+        pm_name, session_id = k.split("_[SEP]_")
+        for p in cur_progress:
+            results = get_step_pk_timestamp(pm_name, session_id, p)
+            if len(results) == 1:
+                # if there are multiple occurrence of this concept step, ignore for now, which will likely fall back to a previous step (having minimal impact on the task identification)
+                for (step_pk, step_timestamp) in results:
+                    if step_timestamp >= progress[1]:
+                        progress = (step_pk, step_timestamp)
         match_scores[k] = fitness
+        match_steps[k] = progress
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
-    print(match_scores)
     if len(match_scores.keys()) == 0:
         logger.warning("No PM for matching yet...")
         return next_request_result
@@ -366,7 +380,8 @@ def task_classification(url, user_id, interval=None):
                     continue
                 task_details.append({"user_id": shareflow.userid,
                                      "session_id": shareflow.pk,
-                                     "task_name": shareflow.task_name})
+                                     "task_name": shareflow.task_name,
+                                     "current_step": match_steps[key][0]})
                 tids.append(shareflow.pk)
                 matched_tasks.append(t_name)
                 count += 1
@@ -387,13 +402,15 @@ def task_classification(url, user_id, interval=None):
                         continue
                     task_details.append({"user_id": shareflow.userid,
                                          "session_id": shareflow.pk,
-                                         "task_name": shareflow.task_name})
+                                         "task_name": shareflow.task_name,
+                                         "current_step": match_steps[key][0]})
                     tids.append(shareflow.pk)
                     matched_tasks.append(t_name)
                     count += 1
         # randomly select one highest Shareflow if there are multiple matching
         matched_task_idx = random.choice(list(range(len(matched_tasks))))
         logger.info(f"Tasks identified for {user_id}: {matched_tasks[matched_task_idx]} with score {match_score}")
+        print(task_details)
         matched_tasks = [matched_tasks[matched_task_idx]]
         task_details = [task_details[matched_task_idx]]
         tids = [tids[matched_task_idx]]
@@ -417,6 +434,7 @@ def task_classification(url, user_id, interval=None):
     #pr.expire(360) # the push records are stored for 6 minutes, then expire
 
     logger.info(f"Tasks identified for {user_id}: {'; '.join(matched_tasks)} with score {match_score}")
+    print(task_details)
     return {
         "task_name": "; ".join(matched_tasks),
         "certainty": match_score,
