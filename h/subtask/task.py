@@ -336,7 +336,7 @@ def task_classification(url, user_id, interval=None):
         progress = (None, float("-inf"))
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
-            results = get_step_pk_timestamp(pm_name, session_id, p)
+            results = get_step_pk_timestamp(pm_name, session_id, p.name)
             print(results)
             if results and len(results) == 1:
                 # if there are multiple occurrence of this concept step, ignore for now, which will likely fall back to a previous step (having minimal impact on the task identification)
