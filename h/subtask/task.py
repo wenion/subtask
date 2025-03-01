@@ -332,12 +332,10 @@ def task_classification(url, user_id, interval=None):
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
         fitness = replay_result["trace_fitness"]
         cur_progress = list(replay_result["enabled_transitions_in_marking"])
-        print(cur_progress)
         progress = (None, float("-inf"))
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
             results = get_step_pk_timestamp(pm_name, session_id, p.name)
-            print(results)
             if results and len(results) == 1:
                 # if there are multiple occurrence of this concept step, ignore for now, which will likely fall back to a previous step (having minimal impact on the task identification)
                 for (step_pk, step_timestamp) in results:
@@ -347,7 +345,8 @@ def task_classification(url, user_id, interval=None):
         match_steps[k] = progress
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
-    print(match_scores)
+    print("Matched scores", match_scores)
+    print("Matched steps", match_steps)
     if len(match_scores.keys()) == 0:
         logger.warning("No PM for matching yet...")
         return next_request_result
