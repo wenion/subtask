@@ -620,7 +620,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             session_id = payload["sessionId"]
             shareflow_name = payload["taskName"]
             result = fetch_user_event_record_by_pk(session_id)
-            if not result or not result["table_result"] or result["total"] == 0:
+            if not result:
                 logger.error("ShareFlow not found, incorrect Session ID. Cannot delete process model")
                 return False
             if f"{shareflow_name}_[SEP]_{session_id}" in all_process_models:
