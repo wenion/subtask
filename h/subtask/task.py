@@ -416,6 +416,11 @@ def task_classification(url, user_id, interval=None):
         matched_tasks = [matched_tasks[matched_task_idx]]
         task_details = [task_details[matched_task_idx]]
         tids = [tids[matched_task_idx]]
+
+    if len(matched_tasks) == 0 or len(task_details) == 0 or len(tids) == 0:
+        logger.warning(user_id + ": No task matching")
+        return next_request_result
+
     push_message = "The following ShareFlows from your colleagues might be useful: "
     same = same_as_previous(user_id=user_id,
                             url=url,
