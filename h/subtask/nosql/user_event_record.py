@@ -41,10 +41,8 @@ def fetch_user_event_record_by_session_id(session_id, userid):
 
 
 def fetch_user_event_record_by_pk(pk):
-    print(pk)
     query = UserEventRecord.find(UserEventRecord.pk == pk)
     total = query.all()
-    print(total)
     return total[0] if len(total) > 0 else None
 
 

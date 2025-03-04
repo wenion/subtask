@@ -19,7 +19,7 @@ from h.subtask.nosql import fetch_user_event, fetch_all_user_event, fetch_all_ev
 from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_name_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
 from h.subtask.nosql import is_task_page, stop_pushing
-from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model, get_step_pk_timestamp
+from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
 from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
 import pandas as pd
 import numpy as np
@@ -619,11 +619,9 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_id = payload["userid"]
             session_id = payload["sessionId"]
             shareflow_name = payload["taskName"]
-            print(user_id, session_id, shareflow_name)
             result = fetch_user_event_record_by_pk(session_id)
             if not result:
-                logger.error("ShareFlow not found, incorrect Session ID. Cannot delete process model")
-                return False
+                logger.error("ShareFlow not found somehow, incorrect Session ID. Please check the issue!")
             if f"{shareflow_name}_[SEP]_{session_id}" in all_process_models:
                 del all_process_models[f"{shareflow_name}_[SEP]_{session_id}"]
             else:
