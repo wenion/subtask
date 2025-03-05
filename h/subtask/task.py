@@ -332,15 +332,14 @@ def task_classification(url, user_id, interval=None):
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
         fitness = replay_result["trace_fitness"]
         cur_progress = list(replay_result["enabled_transitions_in_marking"])
-        progress = (None, float("-inf"))
+        progress = []
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
             results = get_step_pk_timestamp(pm_name, session_id, p.name)
             if results and len(results) == 1:
                 # if there are multiple occurrence of this concept step, ignore for now, which will likely fall back to a previous step (having minimal impact on the task identification)
-                for (step_pk, step_timestamp) in results:
-                    if step_timestamp >= progress[1]:
-                        progress = (step_pk, step_timestamp)
+                progress += results
+        progress = sorted(progress, key=lambda item: item[1], reverse=True)
         match_scores[k] = fitness
         match_steps[k] = progress
 
@@ -383,7 +382,7 @@ def task_classification(url, user_id, interval=None):
                 task_details.append({"user_id": shareflow.userid,
                                      "session_id": shareflow.pk,
                                      "task_name": shareflow.task_name,
-                                     "current_step": match_steps[key][0]})
+                                     "current_step": [val[0] for val in match_steps[key]]})
                 tids.append(shareflow.pk)
                 matched_tasks.append(t_name)
                 count += 1
@@ -405,7 +404,7 @@ def task_classification(url, user_id, interval=None):
                     task_details.append({"user_id": shareflow.userid,
                                          "session_id": shareflow.pk,
                                          "task_name": shareflow.task_name,
-                                         "current_step": match_steps[key][0]})
+                                         "current_step": [val[0] for val in match_steps[key]]})
                     tids.append(shareflow.pk)
                     matched_tasks.append(t_name)
                     count += 1
