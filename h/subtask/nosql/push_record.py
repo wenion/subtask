@@ -90,12 +90,12 @@ def same_as_previous(user_id, url, push_type, push_content, additional_info):
         if result.url == url and result.push_type == push_type and result.push_content == push_content:
             previous_set = set()
             for val in json.loads(result.additional_info):
-                if "pk" in val:
-                    previous_set.add(val["pk"])
+                if "session_id" in val:
+                    previous_set.add(val["session_id"])
             current_set = set()
             for val in json.loads(additional_info):
-                if "pk" in val:
-                    current_set.add(val["pk"])
+                if "session_id" in val:
+                    current_set.add(val["session_id"])
             if previous_set == current_set:
                 return True
         return False

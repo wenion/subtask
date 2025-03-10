@@ -426,7 +426,7 @@ def task_classification(url, user_id, interval=None):
                             push_type="SF",
                             push_content=push_message,
                             additional_info=json.dumps(task_details))
-
+    # TODO: confirm if users should receive new push if they were identified to be in a different step
     if same:
         logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
         return next_request_result
@@ -600,7 +600,6 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
             # stop recording --> create ShareFlow
-            print(payload)
             user_status[payload["userid"]]["last_active"] = current_time
             if not user_status[payload["userid"]]["last_match"]:
                 user_status[payload["userid"]]["last_match"] = current_time
