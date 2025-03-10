@@ -162,9 +162,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     shareflow_name = shareflow_name
     session_id = session_id
     group_id = group_id
-    print(user_id, session_id)
     result = fetch_all_user_events_by_session(user_id, session_id)
-    print(result)
     if not result or not result["table_result"] or result["total"] == 0:
         return {
             "message": "Invalid User ID or ShareFlow name. Cannot create process model",
