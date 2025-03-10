@@ -600,6 +600,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
             # stop recording --> create ShareFlow
+            print(payload)
             user_status[payload["userid"]]["last_active"] = current_time
             if not user_status[payload["userid"]]["last_match"]:
                 user_status[payload["userid"]]["last_match"] = current_time
