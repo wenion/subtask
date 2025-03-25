@@ -38,6 +38,8 @@ import json
 TRACE_EXCHANGE = "trace"
 TASK_EXCHANGE = "process.task"
 
+times = 0
+
 user_status = {}
 idle_status = {}
 translation_table = str.maketrans(string.punctuation, '_'*len(string.punctuation))
@@ -454,6 +456,7 @@ def task_classification(url, user_id, interval=None):
 
 def send_push(settings, produce_routing_key):
     global user_status
+    global times
     pub = Pub(settings, TASK_EXCHANGE)
     logger.info("Task matching loop started...")
     try:
@@ -467,7 +470,9 @@ def send_push(settings, produce_routing_key):
                 elif interval >= 900000:
                     to_del.append(user)
                     continue
-                if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
+                # if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
+                if times > 30:
+                    times = 0
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
                     gevent.sleep(0.1)
@@ -475,19 +480,27 @@ def send_push(settings, produce_routing_key):
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
                     print(user_status)
-                    if response["show_flag"]:
+                    # if response["show_flag"]:
+                    if True:
                         gevent.sleep(0.1)
                         reply_message = {
-                            "client_id": user_status[user]["client_id"],
+                            "client_id":client_id,
                             "type": "ShareFlow Notification",
                             "title": "Need help with this task?",
                             "message": "message",
                             "timestamp": current_time,
-                            "extra": response["task_details"],
+                            "extra": [
+                                {
+                                    "task_name": "localhost:5000",
+                                    "session_id": "01JPT1V4Q1QR78NHYDV7WER57R",
+                                    "user_id": "acct:admin@localhost",
+                                    "current_step": ["01JNSKW8CH30CAS65588XX8QP8"],
+                                }
+                            ],
                             "url": url,
-                            "content": response["message"]
+                            "content": "The following ShareFlows from your colleagues might be useful:"
                         }
-                        print(reply_message)
+                        logger.info("reply_message", reply_message)
                         pub.publish(reply_message, produce_routing_key)
                     user_status[user]["last_match"] = current_time
             for user in to_del:
@@ -592,6 +605,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         # TODO: change implementation to use windowId and TabId, ClientId will not work properly
         print("payload", payload["messageType"], payload["type"])
         global user_status
+        global times
         current_time = datetime.now().timestamp() * 1000
         message = ""
         if payload["userid"] not in user_status:
@@ -648,7 +662,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
                 user_status[payload["userid"]]["interval"] = 5000
-            print("triggered Client_ID", payload["client_id"])
+            print("triggered Client_ID", payload["client_id"], times)
+            times += 10
         #    url = payload["url"]
         #    user_id = payload["userid"]
         #    task_classification(url, user_id, interval=None)
