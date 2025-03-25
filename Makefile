@@ -217,6 +217,7 @@ docker-run-prod:
 	@docker run \
 		-d \
 		--network=dbs \
+		-v /pvol/process_models:/var/lib/hypothesis/process_models \
 		--env-file .docker.env \
 		--name tad \
 		tad:$(DOCKER_TAG)
