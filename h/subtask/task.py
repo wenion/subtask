@@ -187,7 +187,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     try:
         with open(file_path, 'r') as file:
             pnml_data = file.read()
-            print(user_id, current_timestamp, group_id, shareflow_name, session_id)
+            logger.info(f"{user_id}, {current_timestamp}, {group_id}, {shareflow_name}, {session_id}")
             pk_concept_mapping = {}
             for index, row in formatted_trace.iterrows():
                 if row["concept:name"] not in pk_concept_mapping:
@@ -346,8 +346,8 @@ def task_classification(url, user_id, interval=None):
         match_steps[k] = progress
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
-    print("Matched scores", match_scores)
-    print("Matched steps", match_steps)
+    logger.info(f"Matched scores {match_scores}")
+    logger.info(f"Matched steps {match_steps}")
     if len(match_scores.keys()) == 0:
         logger.warning("No PM for matching yet...")
         return next_request_result
@@ -413,7 +413,7 @@ def task_classification(url, user_id, interval=None):
         # randomly select one highest Shareflow if there are multiple matching
         matched_task_idx = random.choice(list(range(len(matched_tasks))))
         logger.info(f"Tasks identified for {user_id}: {matched_tasks[matched_task_idx]} with score {match_score}")
-        print(task_details)
+        logger.info(f"task_details {task_details['user_id']} {task_details['session_id']} {task_details['task_name']} {task_details['current_step']}")
         matched_tasks = [matched_tasks[matched_task_idx]]
         task_details = [task_details[matched_task_idx]]
         tids = [tids[matched_task_idx]]
@@ -479,7 +479,7 @@ def send_push(settings, produce_routing_key):
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
-                    print(user_status)
+                    logger.info(f"user_status {status['client_id']} {url}")
                     # if response["show_flag"]:
                     if True:
                         gevent.sleep(0.1)
@@ -603,7 +603,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         """
 
         # TODO: change implementation to use windowId and TabId, ClientId will not work properly
-        print("payload", payload["messageType"], payload["type"])
+        logger.info(f"payload {payload['messageType']}, {payload['type']}")
         global user_status
         global times
         current_time = datetime.now().timestamp() * 1000
@@ -662,7 +662,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
                 user_status[payload["userid"]]["interval"] = 5000
-            print("triggered Client_ID", payload["client_id"], times)
+            logger.info(f"triggered Client_ID {payload['client_id']}, {times}")
             times += 10
         #    url = payload["url"]
         #    user_id = payload["userid"]
