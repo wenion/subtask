@@ -27,6 +27,7 @@ help:
 	@echo "                       the Docker image locally in production mode. "
 	@echo "                       It assumes the services are being run using "
 	@echo "                       docker compose in the 'h_default' network."
+	@echo "make docker-run-prod  Run the app's Docker image in production environment."
 
 .PHONY: services
 services: args?=up -d --wait
@@ -170,7 +171,7 @@ sure: checkformatting lint frontend-typecheck test coverage functests
 
 .PHONY: docker
 docker:
-	@git archive --format=tar.gz HEAD | docker build -t hypothesis/hypothesis:$(DOCKER_TAG) -
+	@git archive --format=tar.gz HEAD | docker build -t tad:$(DOCKER_TAG) -
 
 .PHONY: run-docker
 run-docker:
@@ -193,16 +194,35 @@ run-docker:
 		-e "NEW_RELIC_APP_NAME=h (dev)" \
 		-e "NEW_RELIC_LICENSE_KEY" \
 		-e "SECRET_KEY=notasecret" \
-		-e "ENABLE_NGINX=true" \
-		-e "ENABLE_WEB=true" \
-		-e "ENABLE_WEBSOCKET=true" \
+		-e "ENABLE_NGINX=false" \
+		-e "ENABLE_WEB=false" \
+		-e "ENABLE_WEBSOCKET=false" \
+		-e "ENABLE_WORKER=false" \
+		-e "ENABLE_SUBTASK=true" \
+		-e "SUBTASK_NUM_WORKERS=2" \
 		-e "WEBSOCKET_CONFIG=conf/websocket-monolithic.ini" \
-		-e "ENABLE_WORKER=true" \
-		-p 5000:5000 \
-		--name hypothesis \
-		hypothesis/hypothesis:$(DOCKER_TAG)
+		-e "ENABLE_SUBTASK_MONOLITHIC=false" \
+		-p 5003:5003 \
+		--name tad \
+		tad:$(DOCKER_TAG)
 
-DOCKER_TAG = dev
+.PHONY: docker-run-prod
+docker-run-prod:
+	# To use the local client with the Docker container, you must run the service,
+	# navigate to /admin/oauthclients and register an "authorization_code" OAuth
+	# client, then restart the service with the `CLIENT_OAUTH_ID` environment
+	# variable set.
+	#
+	# If you don't intend to use the client with the container, you can skip this.
+	@docker run \
+		-d \
+		--network=dbs \
+		--env-file .docker.env \
+		--name tad \
+		tad:$(DOCKER_TAG)
+
+TAG := $(shell git describe --tags --always)
+DOCKER_TAG := $(TAG)
 
 build/manifest.json: node_modules/.uptodate
 	@yarn build
