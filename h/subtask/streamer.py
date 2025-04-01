@@ -6,15 +6,15 @@ import gevent
 from pyramid.events import ApplicationCreated, subscriber
 
 from h.subtask import db
-#from h.subtask.metrics import metrics_process
-from h.subtask.task import process_messages, send_push
+from h.subtask.metrics import metrics_process
+from h.subtask.task import push_messages
 
 log = logging.getLogger(__name__)
 
 
 # Message queues that the streamer processes messages from
-TRACE_TOPIC = "request.user.event"
-TASK_TOPIC = "response.user.event"
+PULL_TOPIC = "pull.user.tab"
+PUSH_TOPIC = "push.user.tab"
 
 
 @subscriber(ApplicationCreated)
@@ -30,8 +30,7 @@ def start(event):  # pragma: no cover
     settings = registry.settings
 
     greenlets = [
-        gevent.spawn(process_messages, settings, TRACE_TOPIC, TASK_TOPIC),
-        gevent.spawn(send_push, settings, TASK_TOPIC)
+        gevent.spawn(push_messages, settings, PUSH_TOPIC, PULL_TOPIC),
     ]
 
     # Start a "greenlet of last resort" to monitor the worker greenlets and

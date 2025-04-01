@@ -1,9 +1,8 @@
 import pyramid
 
 from h.config import configure
-#from h.security import StreamerPolicy
+from h.security import StreamerPolicy
 from h.sentry_filters import SENTRY_FILTERS
-
 
 
 def create_app(_global_config, **settings):
@@ -18,8 +17,6 @@ def create_app(_global_config, **settings):
     config.include("h.db")
     #config.include("h.session")
     #config.include("h.services")
-    # include redis nosql codes -- Steve
-    config.include("h.subtask.nosql")
 
     # We include links in order to set up the alternative link registrations
     # for annotations.
@@ -30,12 +27,13 @@ def create_app(_global_config, **settings):
     # config.add_route("ws", "/ws")
     # config.add_route("annotation", "/a/{id}", static=True)
     # config.add_route("api.annotation", "/api/annotations/{id}", static=True)
+    config.add_route("hello", "/")
 
     # Health check
     config.scan("h.views.status")
     config.add_route("status", "/_status")
 
-    # config.scan("h.subtask.views")
+    config.scan("h.subtask.views")
     config.scan("h.subtask.streamer")
     '''
     config.add_tween(
