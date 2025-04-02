@@ -10,15 +10,19 @@ PULL_TOPIC = "pull.user.tab"
 PUSH_TOPIC = "push.user.tab"
 
 
-def push_messages(settings, subscribe_routing_key, produce_routing_key):
+def push_messages(registry, subscribe_routing_key, produce_routing_key):
     """
     Processes incoming messages by subscribing to a RabbitMQ topic, consuming
     messages, and responding via a RabbitMQ producer.
 
     params:
-        settings (dict): Configuration settings. Example: {'broker_url': 'amqp://guest:guest@localhost:5672//'}
+        registry:
+            settings (dict): Configuration settings. Example: {'broker_url': 'amqp://guest:guest@localhost:5672//'}
+            "kn": Knowledge_Nuggest
         routing_key (str): The routing key used to subscribe to the topic.
     """
+    settings = registry.settings
+    kn = registry['kn']
     pub = Pub(settings, PULL_EXCHANGE)
 
     def callback(payload, attribute):
@@ -53,14 +57,40 @@ def push_messages(settings, subscribe_routing_key, produce_routing_key):
             Example reply_message:
                 {
                     "client_id": "c03bbbf6af3775bc803063f550e3be4c", # required
-                    "state": "SUCCESS",
                     "content": "custom",
                 }
         """
+        response = kn.knowledge_pushing(payload, "")
+        summary = response[0]["output_text"]
+        json_data =response[1]
+        context = []
+
+        for index, item in enumerate(json_data):
+            result = {
+                "id": "dsi-"+ str(index),
+                "page_content": "",
+                "metadata": {
+                    "id": "dsi-"+ str(index),
+                    "title": item["title"],
+                    "url": item["url"],
+                    "score": str(0.99 - index*0.01),
+                    "summary": item["summary"],
+                    "highlights": "",
+                    "repository": item["repository"],
+                },
+                "is_bookmark": False
+            }
+            context.append(result)
 
         reply_message = {
             "client_id": payload['client_id'],
+            "type": "knowledge-push",
+            "payload": {
+                "summary": summary,
+                "context": [context]
+            }
         }
+
         pub.publish(reply_message, produce_routing_key)
 
     sub = Sub(

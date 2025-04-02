@@ -27,10 +27,9 @@ def start(event):  # pragma: no cover
     The function does not block.
     """
     registry = event.app.registry
-    settings = registry.settings
 
     greenlets = [
-        gevent.spawn(push_messages, settings, PUSH_TOPIC, PULL_TOPIC),
+        gevent.spawn(push_messages, registry, PUSH_TOPIC, PULL_TOPIC),
     ]
 
     # Start a "greenlet of last resort" to monitor the worker greenlets and
