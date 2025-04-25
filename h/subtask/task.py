@@ -1,6 +1,8 @@
+import jsonschema
 import logging
 
 from h.pubsub import Sub, Pub
+from jsonschema import validate, ValidationError, SchemaError
 
 log = logging.getLogger(__name__)
 
@@ -9,6 +11,71 @@ PUSH_EXCHANGE = "push"
 PULL_TOPIC = "pull.user.tab"
 PUSH_TOPIC = "push.user.tab"
 
+
+request_schema = {
+    "type": "object",
+    "properties": {
+        "messageType": {"type": "string"},
+        "textContent": {"type": "string"},
+        "url": {"type": "string"},
+        "userid": {"type": "string"},
+        "title": {"type": "string"},
+        "client_id": {"type": "string"},
+        "tabId": {"type": ["string", "null"]},  # Optional and can be null
+        "windowId": {"type": ["string", "null"]},  # Optional and can be null
+        "timestamp": {"type": ["integer", "null"]},  # Optional and can be null
+    },
+    "required": ["messageType", "textContent", "url", "userid", "title", "client_id"],  # These are required fields
+    "additionalProperties": False  # Disallow extra properties
+}
+
+response_schema = {
+    "type": "object",
+    "properties": {
+        "summary": {
+            "type": "object",
+            "properties": {
+                "output_text": {"type": "string"}
+            },
+            "required": ["output_text"],
+            "additionalProperties": True
+        },
+        "response_list": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "string"},
+                        "title": {"type": "string"},
+                        "url": {"type": "string"},
+                        "repository": {"type": "string"},
+                        "summary": {"type": "string"}
+                    },
+                    "required": ["title", "url", "repository", "summary"],
+                    "additionalProperties": True
+                }
+            }
+        }
+    },
+    "required": ["summary", "response_list"],
+    "additionalProperties": True
+}
+
+def validate_payload(payload: dict, schema) -> bool:
+    try:
+        # Validate the payload against the schema
+        validate(instance=payload, schema=schema)
+        return True
+    except ValidationError as ve:
+        # Handle the validation error
+        log.error(f"Validation error: {ve.message}")
+        return False
+    except SchemaError as se:
+        # Handle the validation error
+        log.error(f"SchemaError error: {se.message}")
+        return False
 
 def push_messages(registry, subscribe_routing_key, produce_routing_key):
     """
@@ -47,7 +114,7 @@ def push_messages(registry, subscribe_routing_key, produce_routing_key):
                     'textContent': 'Click Open Zoom Workplace app on the dialog',
                     'url': 'https://patterns.hypothes.is/',
                     'userid': 'acct:admin@localhost',
-                    'title': 'Join our Cloud HD Video Meeting',-
+                    'title': 'Join our Cloud HD Video Meeting',
                     'client_id': 'c03bbbf6af3775bc803063f550e3be4c'
                     -'tabId': 1566284858,
                     -'windowId': 1566283865,
@@ -60,9 +127,21 @@ def push_messages(registry, subscribe_routing_key, produce_routing_key):
                     "content": "custom",
                 }
         """
-        response = kn.knowledge_pushing(payload, "")
-        summary = response[0]["output_text"]
-        json_data =response[1]
+        is_valid = validate_payload(payload, request_schema)
+        if not is_valid:
+            log.error('request error')
+            return
+
+        content = payload["textContent"]
+        response = kn.knowledge_pushing("", content)
+
+        response_formating = {"summary": response[0], "response_list": response[1]}
+        is_valid = validate_payload(response_formating, response_schema)
+        if not is_valid:
+            log.error('response error')
+            return
+        summary = response_formating["summary"]["output_text"]
+        json_data =response_formating["response_list"][0]
         context = []
 
         for index, item in enumerate(json_data):

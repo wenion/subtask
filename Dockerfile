@@ -69,7 +69,7 @@ COPY . .
 RUN [ -d .git ] && chown -R hypothesis:hypothesis .git || :
 
 # Expose the default port.
-EXPOSE 5003
+EXPOSE 5004
 
 # Set the application environment
 ENV PATH /var/lib/hypothesis/bin:$PATH
@@ -80,4 +80,5 @@ RUN dos2unix bin/*
 
 # Start the web server by default
 USER hypothesis
+
 CMD ["gunicorn", "--paste", "conf/subtask-monolithic.ini", "--config", "conf/gunicorn-subtask-monolithic.conf.py"]

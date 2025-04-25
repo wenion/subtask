@@ -1,14 +1,14 @@
-import pyramid
+# import pyramid
 
 from h.config import configure
-from h.security import StreamerPolicy
-from h.sentry_filters import SENTRY_FILTERS
+# from h.security import StreamerPolicy
+# from h.sentry_filters import SENTRY_FILTERS
 
 
 def create_app(_global_config, **settings):
     config = configure(settings=settings)
 
-    config.include("pyramid_services")
+    # config.include("pyramid_services")
 
     #config.include("h.security")
     # Override the default authentication policy.
@@ -29,6 +29,7 @@ def create_app(_global_config, **settings):
     # config.add_route("annotation", "/a/{id}", static=True)
     # config.add_route("api.annotation", "/api/annotations/{id}", static=True)
     config.add_route("hello", "/")
+    config.add_route("query", "/query")
 
     # Health check
     config.scan("h.views.status")
@@ -44,14 +45,14 @@ def create_app(_global_config, **settings):
     '''
 
     # Configure sentry
-    config.add_settings(
-        {
-            "h_pyramid_sentry.filters": SENTRY_FILTERS,
-            "h_pyramid_sentry.celery_support": True,
-        }
-    )
+    # config.add_settings(
+    #     {
+    #         "h_pyramid_sentry.filters": SENTRY_FILTERS,
+    #         "h_pyramid_sentry.celery_support": True,
+    #     }
+    # )
 
-    config.include("h_pyramid_sentry")
+    # config.include("h_pyramid_sentry")
 
     # Add support for logging exceptions whenever they arise
     config.include("pyramid_exclog")

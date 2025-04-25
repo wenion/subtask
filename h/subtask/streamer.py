@@ -5,8 +5,8 @@ import sys
 import gevent
 from pyramid.events import ApplicationCreated, subscriber
 
-from h.subtask import db
-from h.subtask.metrics import metrics_process
+# from h.subtask import db
+# from h.subtask.metrics import metrics_process
 from h.subtask.task import push_messages
 
 log = logging.getLogger(__name__)
