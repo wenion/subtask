@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y \
     libpq5 \
     nginx \
     git \
-    dos2unix
+    dos2unix \
+    graphviz
 
 # Create the hypothesis user, group, home directory and package directory.
 RUN groupadd --system hypothesis && useradd --system --gid hypothesis --home-dir /var/lib/hypothesis --create-home hypothesis
