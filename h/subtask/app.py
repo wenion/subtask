@@ -1,6 +1,6 @@
 # import pyramid
 
-from h.config import configure
+from h.subtask.config import configure
 # from h.security import StreamerPolicy
 # from h.sentry_filters import SENTRY_FILTERS
 
@@ -30,6 +30,9 @@ def create_app(_global_config, **settings):
     # config.add_route("api.annotation", "/api/annotations/{id}", static=True)
     config.add_route("hello", "/")
     config.add_route("query", "/query")
+    config.add_route('knowledge', '/knowledge')
+    config.add_route('upload', '/upload')
+
 
     # Health check
     config.scan("h.views.status")

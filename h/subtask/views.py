@@ -71,7 +71,82 @@ data = [
     }
 ]
 
+# @view_config(route_name='query', request_method='GET', renderer='json')
+# def query(request):
+#     querying = request.params.get("q")
+#     return data
+
+
 @view_config(route_name='query', request_method='GET', renderer='json')
 def query(request):
+    kn = request.registry['kn']
+    topics, status = [], '200'
     querying = request.params.get("q")
-    return data
+    if not querying:
+        return {'status': status, 'query': querying, 'context': topics}
+    try:
+        response_list = kn.query_retrieval_optimised([querying])
+
+        for topic in response_list:
+            results = []
+            for i, (doc, score) in enumerate(topic):
+                m = doc.metadata
+                summary = m.get("summary", "")
+                if isinstance(summary, dict) and 'input_documents' in summary:
+                    m["summary"] = summary.get("output_text", m.get("url", ""))
+                results.append({'id': i, 'page_content': doc.page_content, 'metadata': m, 'score': score})
+            topics.append(results)
+    except Exception as e:
+        status = str(e)
+    top20 = topics[0][:20] if topics else []
+    return {'status': status, 'query': querying, 'context': top20}
+
+@view_config(route_name='knowledge', request_method='POST', renderer='json')
+def knowledge_pushing(request):
+    try:
+        kn = request.registry['kn']
+        content = request.POST.get('content')
+
+        if not content:
+            return {'error': 'Missing content'}
+
+        summary, response_list = kn.knowledge_pushing(content)
+        topics = []
+        for topic in response_list:
+            results = []
+            for i, (doc, score) in enumerate(topic):
+                m = doc.metadata
+                if isinstance(m.get("summary", {}), dict):
+                    m["summary"] = m["summary"].get("output_text", m.get("title", ""))
+                results.append({'id': i, 'page_content': doc.page_content, 'metadata': m, 'score': score})
+            topics.append(results)
+            top5 = topics[0][:5] if topics else []
+        return {'summary': summary, 'context': top5}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # ✅ logs error to terminal
+        return {'error': str(e)}
+
+@view_config(route_name='upload', request_method='POST', renderer='json')
+def knowledge_upload(request):
+    kn = request.registry['kn']
+    doc_dict = {
+        "Title": request.POST.get('title'),
+        "Content": request.POST.get('content'),
+        "URL": request.POST.get('url'),
+        "Repository": request.POST.get('repository')
+    }
+    if not doc_dict["Content"]:
+        return {"fail": "Content is empty"}
+
+    try:
+        count =  kn.nuggets_update([doc_dict])
+        if count > 0:
+            return {"success": True, "message": f"{count} document(s) added"}
+        else:
+            return {"success": False, "message": "No document added (possibly empty or invalid)"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
