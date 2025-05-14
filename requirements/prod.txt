@@ -53,6 +53,7 @@ elasticsearch==6.8.2
     #   elasticsearch-dsl
 elasticsearch-dsl==6.4.0
     # via -r requirements/prod.in
+faiss-gpu-cu12==1.10.0
 gevent==24.2.1
     # via -r requirements/prod.in
 greenlet==3.0.3
@@ -117,6 +118,9 @@ markupsafe==2.1.5
 newrelic==9.13.0
     # via -r requirements/prod.in
 numpy==1.26.4
+nvidia-cublas-cu12==12.8.4.1
+nvidia-cuda-runtime-cu12==12.4.99
+nvidia-cudnn-cu12==8.9.2.26
 oauthlib==3.2.2
     # via -r requirements/prod.in
 packaging==24.1
