@@ -121,7 +121,7 @@ def knowledge_pushing(request):
                 results.append({'id': i, 'page_content': doc.page_content, 'metadata': m, 'score': score})
             topics.append(results)
             top5 = topics[0][:5] if topics else []
-        return {'summary': summary, 'context': top5}
+        return {'summary': summary, 'context': [top5]}
 
     except Exception as e:
         import traceback

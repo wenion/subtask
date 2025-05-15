@@ -133,40 +133,53 @@ def push_messages(registry, subscribe_routing_key, produce_routing_key):
             return
 
         content = payload["textContent"]
-        response = kn.knowledge_pushing("", content)
+        response = kn.knowledge_pushing(content)
 
-        response_formating = {"summary": response[0], "response_list": response[1]}
-        is_valid = validate_payload(response_formating, response_schema)
-        if not is_valid:
-            log.error('response error')
-            return
-        summary = response_formating["summary"]["output_text"]
-        json_data =response_formating["response_list"][0]
-        context = []
+        summary = response[0]
+        response_list = response[1]
+        topics = []
+        for topic in response_list:
+            results = []
+            for i, (doc, score) in enumerate(topic):
+                m = doc.metadata
+                if isinstance(m.get("summary", {}), dict):
+                    m["summary"] = m["summary"].get("output_text", m.get("title", ""))
+                results.append({'id': i, 'page_content': doc.page_content, 'metadata': m, 'score': score})
+            topics.append(results)
+            top5 = topics[0][:5] if topics else []
 
-        for index, item in enumerate(json_data):
-            result = {
-                "id": "dsi-"+ str(index),
-                "page_content": "",
-                "metadata": {
-                    "id": "dsi-"+ str(index),
-                    "title": item["title"],
-                    "url": item["url"],
-                    "score": str(0.99 - index*0.01),
-                    "summary": item["summary"],
-                    "highlights": "",
-                    "repository": item["repository"],
-                },
-                "is_bookmark": False
-            }
-            context.append(result)
+        # response_formating = {"summary": response[0], "response_list": response[1]}
+        # is_valid = validate_payload(response_formating, response_schema)
+        # if not is_valid:
+        #     log.error('response error')
+        #     return
+        # summary = response_formating["summary"]["output_text"]
+        # json_data =response_formating["response_list"][0]
+        # context = []
+
+        # for index, item in enumerate(json_data):
+        #     result = {
+        #         "id": "dsi-"+ str(index),
+        #         "page_content": "",
+        #         "metadata": {
+        #             "id": "dsi-"+ str(index),
+        #             "title": item["title"],
+        #             "url": item["url"],
+        #             "score": str(0.99 - index*0.01),
+        #             "summary": item["summary"],
+        #             "highlights": "",
+        #             "repository": item["repository"],
+        #         },
+        #         "is_bookmark": False
+        #     }
+        #     context.append(result)
 
         reply_message = {
             "client_id": payload['client_id'],
             "type": "knowledge-push",
             "payload": {
                 "summary": summary,
-                "context": [context]
+                "context": [top5]
             }
         }
 

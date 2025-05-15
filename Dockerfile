@@ -81,4 +81,5 @@ RUN dos2unix bin/*
 # Start the web server by default
 USER hypothesis
 
-CMD ["gunicorn", "--paste", "conf/subtask-monolithic.ini", "--config", "conf/gunicorn-subtask-monolithic.conf.py"]
+# CMD ["gunicorn", "--paste", "conf/subtask-monolithic.ini", "--config", "conf/gunicorn-subtask-monolithic.conf.py"]
+CMD ["gunicorn", "--paste", "conf/subtask-dev.ini", "--config", "conf/gunicorn-subtask-dev.conf.py"]
