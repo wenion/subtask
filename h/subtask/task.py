@@ -130,7 +130,7 @@ def push_messages(registry, subscribe_routing_key, produce_routing_key):
         reply_message = {}
         message_type = payload.get("messageType", None)
         if message_type == "PageData":
-            reply_message = handle_knowledge_push(payload)
+            reply_message = handle_knowledge_push(kn, payload)
         elif message_type == "Query":
             pass
 
@@ -146,7 +146,7 @@ def push_messages(registry, subscribe_routing_key, produce_routing_key):
     )
     sub.run()
 
-def handle_knowledge_push(payload):
+def handle_knowledge_push(kn, payload):
     is_valid = validate_payload(payload, request_schema)
     if not is_valid:
         log.error('request error')
