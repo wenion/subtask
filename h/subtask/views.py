@@ -71,11 +71,6 @@ data = [
     }
 ]
 
-# @view_config(route_name='query', request_method='GET', renderer='json')
-# def query(request):
-#     querying = request.params.get("q")
-#     return data
-
 
 @view_config(route_name='query', request_method='GET', renderer='json')
 def query(request):
@@ -99,7 +94,7 @@ def query(request):
     except Exception as e:
         status = str(e)
     top20 = topics[0][:20] if topics else []
-    return {'status': status, 'query': querying, 'context': top20}
+    return {'status': status, 'query': querying, 'context': [top20]}
 
 @view_config(route_name='knowledge', request_method='POST', renderer='json')
 def knowledge_pushing(request):

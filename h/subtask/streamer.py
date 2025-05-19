@@ -8,12 +8,14 @@ from pyramid.events import ApplicationCreated, subscriber
 # from h.subtask import db
 # from h.subtask.metrics import metrics_process
 from h.subtask.rpc import recieve_rpc_request
-from h.subtask.task import push_messages
+from h.subtask.topic import push_messages
 
 log = logging.getLogger(__name__)
 
 
 # Message queues that the streamer processes messages from
+PULL_EXCHANGE = "pull"
+PUSH_EXCHANGE = "push"
 PULL_TOPIC = "pull.user.tab"
 PUSH_TOPIC = "push.user.tab"
 
@@ -31,7 +33,7 @@ def start(event):  # pragma: no cover
 
     greenlets = [
         gevent.spawn(recieve_rpc_request, registry),
-        gevent.spawn(push_messages, registry, PUSH_TOPIC, PULL_TOPIC),
+        gevent.spawn(push_messages, registry, PUSH_EXCHANGE, PUSH_TOPIC, PULL_EXCHANGE, PULL_TOPIC),
     ]
 
     # Start a "greenlet of last resort" to monitor the worker greenlets and

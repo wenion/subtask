@@ -1,3 +1,7 @@
+"""
+    Deprecated
+"""
+
 import jsonschema
 import logging
 
@@ -145,34 +149,3 @@ def push_messages(registry, subscribe_routing_key, produce_routing_key):
         callback=callback,
     )
     sub.run()
-
-def handle_knowledge_push(kn, payload):
-    is_valid = validate_payload(payload, request_schema)
-    if not is_valid:
-        log.error('request error')
-        return
-
-    content = payload["textContent"]
-    response = kn.knowledge_pushing(content)
-
-    summary = response[0]
-    response_list = response[1]
-    topics = []
-    for topic in response_list:
-        results = []
-        for i, (doc, score) in enumerate(topic):
-            m = doc.metadata
-            if isinstance(m.get("summary", {}), dict):
-                m["summary"] = m["summary"].get("output_text", m.get("title", ""))
-            results.append({'id': i, 'page_content': doc.page_content, 'metadata': m, 'score': score})
-        topics.append(results)
-        top5 = topics[0][:5] if topics else []
-
-    return {
-        "client_id": payload['client_id'],
-        "type": "knowledge-push",
-        "payload": {
-            "summary": summary,
-            "context": [top5]
-        }
-    }

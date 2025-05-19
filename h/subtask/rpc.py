@@ -3,17 +3,9 @@ from kombu import Queue
 from kombu.mixins import ConsumerProducerMixin
 
 from h.realtime import get_connection
+from h.subtask.api import query
 
 rpc_queue = Queue('rpc_queue')
-
-
-def fib(n):
-    if n == 0:
-        return 0
-    elif n == 1:
-        return 1
-    else:
-        return fib(n - 1) + fib(n - 2)
 
 
 class Worker(ConsumerProducerMixin):
@@ -36,7 +28,7 @@ class Worker(ConsumerProducerMixin):
         result = None
         func = message.payload.get('func', None)
         if func == "query" :
-            result = self.kn.query(message.payload.get('q'))
+            result = query(self.kn, message.payload.get('q'))
             import time
 
         self.producer.publish(
