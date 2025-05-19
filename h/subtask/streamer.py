@@ -7,6 +7,7 @@ from pyramid.events import ApplicationCreated, subscriber
 
 # from h.subtask import db
 # from h.subtask.metrics import metrics_process
+from h.subtask.rpc import recieve_rpc_request
 from h.subtask.task import push_messages
 
 log = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ def start(event):  # pragma: no cover
     registry = event.app.registry
 
     greenlets = [
+        gevent.spawn(recieve_rpc_request, registry),
         gevent.spawn(push_messages, registry, PUSH_TOPIC, PULL_TOPIC),
     ]
 
