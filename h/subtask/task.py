@@ -240,6 +240,79 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     }
 
 
+def update_pm(user_id, shareflow_name, session_id, group_id, shareflow_df):
+    trace = shareflow_df
+    trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
+    net, im, fm, formatted_trace = create_process_model_from_log(trace)
+    if not net:
+        return {
+            "message": "Fail to update process model",
+            "updated": False
+        }
+    sf_name = shareflow_name.translate(translation_table)
+    current_timestamp = int(datetime.now().timestamp() * 1000)
+    if not os.path.exists("process_models"):
+        os.makedirs("process_models")
+    file_path = f"process_models/{sf_name}_{current_timestamp}.pnml"
+    pm4py.write_pnml(net, im, fm, file_path)
+    try:
+        with open(file_path, 'r') as file:
+            pnml_data = file.read()
+            print(user_id, current_timestamp, group_id, shareflow_name, session_id)
+            pk_concept_mapping = {}
+            for index, row in formatted_trace.iterrows():
+                if row["concept:name"] not in pk_concept_mapping:
+                    pk_concept_mapping[row["concept:name"]] = []
+                pk_concept_mapping[row["concept:name"]].append((row["pk"], row["timestamp"]))
+            status = create_process_model(creator=user_id,
+                                          create_time=current_timestamp,
+                                          group=group_id,
+                                          pm_name=shareflow_name,
+                                          pm_content=pnml_data,
+                                          session_id=session_id,
+                                          pk_concept_mapping=pk_concept_mapping)
+            if not status:
+                logger.error("Error occurred during the update of process model.")
+                return {
+                    "message": "Error occurred during the update of process model.",
+                    "updated": False
+                }
+    except FileNotFoundError:
+        logger.error("File not found. Please check the file path.")
+        return {
+            "message": "File not found during update of process model. Please retry!",
+            "updated": False
+        }
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        return {
+            "message": f"An error occurred: {e}",
+            "updated": False
+        }
+    os.remove(file_path)
+    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm)
+    parameters = {"format": "png"}
+    gviz = visualizer.apply(net, im, fm, parameters=parameters)
+    visualizer.save(gviz, f"process_models/{sf_name}_{current_timestamp}.png")
+    logger.info(f"PM {shareflow_name}_{session_id} updated by {user_id}")
+    # store all task pages
+    all_urls = set(trace["base_url"].unique().tolist())
+    all_domains = set()
+    for url in all_urls:
+        parsed_url = urlparse(url)
+        if parsed_url:
+            domain = parsed_url.netloc
+            if domain:
+                all_domains.add(domain)
+    for domain in all_domains:
+        add_task_page(url=domain, pm_name=shareflow_name, session_id=session_id)
+        logger.info(f"{domain} added as task page.")
+    return {
+        "message": "Process model updated",
+        "updated": True
+    }
+
+
 def delete_pm(user_id, session_id, shareflow_name):
     user_id = user_id
     session_id = session_id
@@ -634,6 +707,31 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 logger.error(f"Error deleting task page info from database, {user_id}, {session_id}")
             logger.info(f"PM {shareflow_name}_{session_id} deleted by {user_id}")
             return True
+
+        elif payload["messageType"] == "UpdateShareflow":
+            meta = payload["shareflowMeta"]
+            session_id = meta["session_id"]
+            task_name = meta["task_name"]
+            creator = meta["user_id"]
+            trace_df = pd.DataFrame(payload["update"])
+            delete_outcome = delete_pm(creator, session_id, task_name)
+            if not delete_outcome["removed"]:
+                logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
+            else:
+                logger.info(f"PM {shareflow_name}_{session_id} deleted for update by {creator}")
+            update_outcome = update_pm(creator, session_id, task_name, trace_df)
+            if not update_outcome["updated"]:
+                logger.error(f"Error updating process model, {creator}, {session_id}, {task_name}; due to {update_outcome['message']}")
+            else:
+                logger.info(f"PM {shareflow_name}_{session_id} updated by {creator}")
+
+        elif payload["messageType"] == "PinUnpinShareflow":
+            status = payload["status"]
+            meta = payload["shareflowMeta"]
+            session_id = meta["session_id"]
+            task_name = meta["task_name"]
+            if status == "pin":
+                user_status[payload["userid"]]
 
         elif payload["messageType"] == "TraceData":
             # task classification info
