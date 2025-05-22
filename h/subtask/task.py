@@ -17,7 +17,7 @@ from h.subtask.nosql import fetch_user_event, fetch_all_user_event, fetch_all_ev
     fetch_all_user_events_by_session, fetch_all_user_event_within_time, create_process_model, \
     delete_process_model_by_session_creator, fetch_all_process_model, same_as_previous
 from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_name_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
-from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
+from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user, get_last_within_past_minute_in_task_page
 from h.subtask.nosql import is_task_page, stop_pushing
 from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
 from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
@@ -477,7 +477,8 @@ def task_classification(url, user_id, interval=None):
                     task_details.append({"user_id": shareflow.userid,
                                          "session_id": shareflow.pk,
                                          "task_name": shareflow.task_name,
-                                         "current_step": [val[0] for val in match_steps[key]]})
+                                         "current_step": [val[0] for val in match_steps[key]],
+                                         "match_score": value})
                     tids.append(shareflow.pk)
                     matched_tasks.append(t_name)
                     count += 1
@@ -491,6 +492,11 @@ def task_classification(url, user_id, interval=None):
 
     if len(matched_tasks) == 0 or len(task_details) == 0 or len(tids) == 0:
         logger.warning(user_id + ": No task matching")
+        return next_request_result
+
+    # has pinned shareflow and the pinned one is within the identified tasks -> no action
+    if user_status[user_id]["pinnedSF"] and user_status[user_id]["pinnedSF"][0] in tids and user_status[user_id]["pinnedSF"][1] in matched_tasks:
+        logger.info(user_id + "has pinned SF, which is one of the identified tasks; no push")
         return next_request_result
 
     push_message = "The following ShareFlows from your colleagues might be useful: "
@@ -725,13 +731,15 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             else:
                 logger.info(f"PM {shareflow_name}_{session_id} updated by {creator}")
 
-        elif payload["messageType"] == "PinUnpinShareflow":
+        elif payload["messageType"] == "PinShareflow":
             status = payload["status"]
             meta = payload["shareflowMeta"]
             session_id = meta["session_id"]
             task_name = meta["task_name"]
             if status == "pin":
-                user_status[payload["userid"]]
+                user_status[payload["userid"]]["pinnedSF"] = (session_id, task_name)
+            elif status == "unpin":
+                user_status[payload["userid"]]["pinnedSF"] = None
 
         elif payload["messageType"] == "TraceData":
             # task classification info
@@ -746,6 +754,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
                 user_status[payload["userid"]]["interval"] = 5000
+            user_status[payload["userid"]]["pinnedSF"] = None
             print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]

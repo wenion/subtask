@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import math
 import pytz
 from redis_om import Migrator
@@ -102,6 +102,23 @@ def same_as_previous(user_id, url, push_type, push_content, additional_info):
     except:
         return False
 
+
+def get_last_within_past_minute_in_task_page(user_id, url):
+    try:
+        query = PushRecord.find(PushRecord.push_to == user_id)
+        result = query.copy(limit=1).sort_by("-timestamp").execute()
+        if not result or len(result) != 1:
+            return None
+        result = result[0]
+        if result.url != url:
+            return None
+        time_threshold = datetime.now() - timedelta(minutes=1)
+        time_threshold = int(time_threshold.timestamp())
+        if result.timestamp <= time_threshold:
+            return None
+        return json.loads(result.additional_info)
+    except:
+        return None
 
 def fetch_all_push_record():
     try:
