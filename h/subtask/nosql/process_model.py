@@ -117,5 +117,5 @@ def get_next_expert_step(pm_name, session_id, cur_timestamp):
         for step in pm.expert_steps:
             if step[1] > cur_timestamp:
                 return step[0]
-        return pm.expert_steps[0][0]
+        return pm.expert_steps[0][0] if len(pm.expert_steps) > 0 else None
     return None
