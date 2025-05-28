@@ -213,7 +213,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     trace = pd.DataFrame(result["table_result"])
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
-    exp_steps = expert_steps(new_trace=trace, new_pm=net, threshold=0.8)
+    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.8)
     exp_steps_timed = []
     if not net:
         return {
@@ -498,7 +498,7 @@ def task_classification(url, user_id, interval=None):
                     logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
                     continue
                 current_steps = [val[0] for val in match_steps[key]]
-                exp_step = get_next_expert_step(t_name, t_id, match_steps[key][1])
+                exp_step = get_next_expert_step(t_name, t_id, match_steps[key][1]) if match_steps[key] else None
                 task_details.append({"user_id": shareflow.userid,
                                      "session_id": shareflow.pk,
                                      "task_name": shareflow.task_name,
@@ -519,7 +519,7 @@ def task_classification(url, user_id, interval=None):
                         logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
                         continue
                     current_steps = [val[0] for val in match_steps[key]]
-                    exp_step = get_next_expert_step(t_name, t_id, match_steps[key][1])
+                    exp_step = get_next_expert_step(t_name, t_id, match_steps[key][1]) if match_steps[key] else None
                     task_details.append({"user_id": shareflow.userid,
                                          "session_id": shareflow.pk,
                                          "task_name": shareflow.task_name,
