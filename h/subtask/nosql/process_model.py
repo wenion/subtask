@@ -18,6 +18,7 @@ class ProcessModel(JsonModel):
     pm_content: str = Field(index=True)# process model content
     session_id: str = Field(index=True) # session_id is actually the pk of ShareFlow (user_event_record)
     pk_concept_mapping: dict = Field(index=False)
+    expert_steps: list = Field(index=False)
 
 
 def fetch_all_process_model():
@@ -45,7 +46,8 @@ def create_process_model(
         pm_name,
         pm_content,
         session_id,
-        pk_concept_mapping):
+        pk_concept_mapping,
+        expert_steps):
     exist = fetch_process_model_by_session_creator(session_id, creator)
     if exist:
         return exist
@@ -56,7 +58,8 @@ def create_process_model(
         pm_name = pm_name,
         pm_content = pm_content,
         session_id = session_id,
-        pk_concept_mapping = pk_concept_mapping
+        pk_concept_mapping = pk_concept_mapping,
+        expert_steps = expert_steps
     )
     process_model.save()
     return process_model
@@ -103,4 +106,16 @@ def get_step_pk_timestamp(pm_name, session_id, concept):
         pm = total[0]
         if concept in pm.pk_concept_mapping:
             return pm.pk_concept_mapping[concept]
+    return None
+
+
+def get_next_expert_step(pm_name, session_id, cur_timestamp):
+    query = ProcessModel.find((ProcessModel.session_id == session_id) & (ProcessModel.pm_name == pm_name))
+    total = query.all()
+    if len(total) > 0:
+        pm = total[0]
+        for step in pm.expert_steps:
+            if step[1] > cur_timestamp:
+                return step[0]
+        return pm.expert_steps[0][0]
     return None
