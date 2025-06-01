@@ -157,7 +157,7 @@ def create_process_model_from_log(event_log):
     return net, im, fm, formatted_event_log
 
 
-def expert_steps(new_trace, new_pm, threshold=0.8):
+def expert_steps(new_trace, new_pm, threshold=0.7):
     # if mutual fitness pass the pre-determined threshold, the two PMs are considered similar
     conforming_trace = []
     conforming_pm = []
@@ -221,7 +221,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     trace = pd.DataFrame(result["table_result"])
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
-    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.8)
+    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
     exp_steps_timed = []
     if not net:
         return {
@@ -299,7 +299,7 @@ def update_pm(user_id, shareflow_name, session_id, group_id, shareflow_df):
     trace = shareflow_df
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
-    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.8)
+    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
     exp_steps_timed = []
     if not net:
         return {
