@@ -18,9 +18,9 @@ from h.subtask.nosql import fetch_user_event, fetch_all_user_event, fetch_all_ev
     delete_process_model_by_session_creator, fetch_all_process_model, same_as_previous
 from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_name_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user, get_last_within_past_minute_in_task_page
-from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step
-from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
-from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
+from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step, update_expert_step
+from h.subtask.nosql import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
+from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
 import pandas as pd
 import numpy as np
 import urllib.parse
@@ -161,6 +161,7 @@ def create_process_model_from_log(event_log):
 def expert_steps(new_trace, new_pm, threshold=0.8):
     # if mutual fitness pass the pre-determined threshold, the two PMs are considered similar
     conforming_trace = []
+    conforming_pm = []
     for k, v in all_process_models.items():
         net, im, fm = v
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(new_trace, net, im, fm,
@@ -183,6 +184,7 @@ def expert_steps(new_trace, new_pm, threshold=0.8):
             if fitness >= threshold:
                 formatted_trace["case_id"] = [len(conforming_trace)] * formatted_trace.shape[0]
                 conforming_trace.append(formatted_trace)
+                conforming_pm.append(k)
     if len(conforming_trace) == 0:
         return {}
     new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
@@ -196,6 +198,11 @@ def expert_steps(new_trace, new_pm, threshold=0.8):
     b_centrality = dict(sorted(b_centrality.items(), key=lambda x: x[1], reverse=True))
     new_pm_places = [val.name for val in new_pm.places]
     key_steps = [k for k, v in b_centrality.items() if k in new_pm_places and v > 0.1]
+    for pm in conforming_pm:
+        pm_name, session_id = pm.split("_[SEP]_")
+        outcome = update_expert_step(pm_name, session_id, key_steps)
+        if not outcome[0]:
+            logger.error(outcome[1])
     return key_steps
 
 

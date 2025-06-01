@@ -119,3 +119,26 @@ def get_next_expert_step(pm_name, session_id, cur_timestamp):
                 return step[0]
         return pm.expert_steps[0][0] if len(pm.expert_steps) > 0 else None
     return None
+
+
+def update_expert_step(pm_name, session_id, expert_steps):
+    query = ProcessModel.find((ProcessModel.pm_name == pm_name) & (ProcessModel.session_id == session_id))
+    total = query.all()
+    if len(total) > 0:
+        pm = total[0]
+        cur_expert_steps = pm.expert_steps
+        cur_expert_step_pks = [val[0] for val in cur_expert_steps]
+        pk_concept_mapping = pm.pk_concept_mapping
+        for step in expert_steps:
+            if step in pk_concept_mapping:
+                step_pk_timestamp = pk_concept_mapping[step]
+                if step_pk_timestamp[0] not in cur_expert_step_pks:
+                    cur_expert_steps.append(step_pk_timestamp)
+        cur_expert_steps = list(sorted(cur_expert_steps, key=lambda item: item[1]))
+        pm.expert_steps = cur_expert_steps
+        try:
+            pm.save()
+            return True, "Expert steps updated"
+        except Exception as e:
+            return False, str(e)
+    return False, "Process Model not found"
