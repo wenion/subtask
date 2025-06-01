@@ -132,8 +132,9 @@ def update_expert_step(pm_name, session_id, expert_steps):
         for step in expert_steps:
             if step in pk_concept_mapping:
                 step_pk_timestamp = pk_concept_mapping[step]
-                if step_pk_timestamp[0] not in cur_expert_step_pks:
-                    cur_expert_steps.append(step_pk_timestamp)
+                for s in step_pk_timestamp:
+                    if s[0] not in cur_expert_step_pks:
+                        cur_expert_steps.append(s)
         cur_expert_steps = list(sorted(cur_expert_steps, key=lambda item: item[1]))
         pm.expert_steps = cur_expert_steps
         try:
