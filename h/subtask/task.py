@@ -776,13 +776,14 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             session_id = meta["sessionId"]
             task_name = meta["taskName"]
             creator = meta["userid"]
+            group_id = meta["groupid"]
             trace_df = pd.DataFrame(payload["update"])
             delete_outcome = delete_pm(creator, session_id, task_name)
             if not delete_outcome["removed"]:
                 logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
             else:
                 logger.info(f"PM {task_name}_{session_id} deleted for update by {creator}")
-            update_outcome = update_pm(creator, session_id, task_name, trace_df)
+            update_outcome = update_pm(creator, task_name, session_id, group_id, trace_df)
             if not update_outcome["updated"]:
                 logger.error(f"Error updating process model, {creator}, {session_id}, {task_name}; due to {update_outcome['message']}")
             else:
