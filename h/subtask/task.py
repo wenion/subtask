@@ -773,9 +773,9 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
 
         elif payload["messageType"] == "UpdateShareflow":
             meta = payload["shareflowMeta"]
-            session_id = meta["session_id"]
-            task_name = meta["task_name"]
-            creator = meta["user_id"]
+            session_id = meta["sessionId"]
+            task_name = meta["taskName"]
+            creator = meta["userid"]
             trace_df = pd.DataFrame(payload["update"])
             delete_outcome = delete_pm(creator, session_id, task_name)
             if not delete_outcome["removed"]:
