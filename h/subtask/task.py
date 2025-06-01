@@ -79,7 +79,6 @@ logger.info("Service Started!!")
 
 def convert_log_to_formatted(event_log):
     activity = []
-    event_log["event_type"] = event_log["event_type"].replace("recording", "open")
     event_log.sort_values(by=["timestamp"], ascending=[True], inplace=True)
     event_log["time"] = pd.to_datetime(event_log["timestamp"], unit="ms")
     event_log = event_log.reset_index()
@@ -778,6 +777,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             creator = meta["userid"]
             group_id = meta["groupid"]
             trace_df = pd.DataFrame(payload["update"])
+            trace_df = trace_df.rename(columns={"textContent": "text_content", "type": "event_type", "tagName": "tag_name", "url": "base_url", "sessionId": "session_id"})
             delete_outcome = delete_pm(creator, session_id, task_name)
             if not delete_outcome["removed"]:
                 logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
