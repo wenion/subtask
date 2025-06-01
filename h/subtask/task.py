@@ -168,6 +168,7 @@ def expert_steps(new_trace, new_pm, threshold=0.8):
                                                                                      case_id_key="case:concept:name",
                                                                                      timestamp_key="time:timestamp")[0]
         fitness = replay_result["trace_fitness"]
+        print(f"new pm TO {k}: {fitness}")
         if fitness >= threshold:
             pm_name, session_id = k.split("_[SEP]_")
             fetch_all_events_by_tn_sid(pm_name, session_id)
@@ -180,6 +181,7 @@ def expert_steps(new_trace, new_pm, threshold=0.8):
                                                                                          case_id_key="case:concept:name",
                                                                                          timestamp_key="time:timestamp")[0]
             fitness = replay_result["trace_fitness"]
+            print(f"{k} TO new pm: {fitness}")
             if fitness >= threshold:
                 formatted_trace["case_id"] = [len(conforming_trace)] * formatted_trace.shape[0]
                 conforming_trace.append(formatted_trace)
@@ -464,7 +466,7 @@ def task_classification(url, user_id, interval=None):
         net, im, fm = v
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
         fitness = replay_result["trace_fitness"]
-        cur_progress = list(replay_result["enabled_transitions_in_marking"])
+        cur_progress = list(replay_result["reached_marking"]) # or "enabled_transitions_in_marking"
         progress = []
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
