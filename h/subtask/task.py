@@ -171,7 +171,7 @@ def expert_steps(new_trace, new_pm, threshold=0.8):
         print(f"new pm TO {k}: {fitness}")
         if fitness >= threshold:
             pm_name, session_id = k.split("_[SEP]_")
-            fetch_all_events_by_tn_sid(pm_name, session_id)
+            result = fetch_all_events_by_tn_sid(pm_name, session_id)
             trace = pd.DataFrame(result["table_result"])
             trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))]  # filter out RECORD events and extension events
             formatted_trace = convert_log_to_formatted(trace)
