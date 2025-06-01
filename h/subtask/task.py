@@ -200,7 +200,9 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
     b_centrality = dict(sorted(b_centrality.items(), key=lambda x: x[1], reverse=True))
     print(b_centrality)
     new_pm_places = [val.name for val in new_pm[0].places]
+    print(new_pm_places)
     key_steps = [k for k, v in b_centrality.items() if k in new_pm_places and v > 0.1]
+    print(key_steps)
     for pm in conforming_pm:
         pm_name, session_id = pm.split("_[SEP]_")
         outcome = update_expert_step(pm_name, session_id, key_steps)
