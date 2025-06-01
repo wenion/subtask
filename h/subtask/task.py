@@ -197,7 +197,7 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
         G.add_edge(act_from, act_to, weight=freq)
     b_centrality = nx.betweenness_centrality(G, normalized=True, endpoints=False)
     b_centrality = dict(sorted(b_centrality.items(), key=lambda x: x[1], reverse=True))
-    new_pm_places = [val.name for val in new_pm.places]
+    new_pm_places = [val.name for val in new_pm[0].places]
     key_steps = [k for k, v in b_centrality.items() if k in new_pm_places and v > 0.1]
     for pm in conforming_pm:
         pm_name, session_id = pm.split("_[SEP]_")
