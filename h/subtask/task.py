@@ -186,6 +186,7 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
                 formatted_trace["case_id"] = [len(conforming_trace)] * formatted_trace.shape[0]
                 conforming_trace.append(formatted_trace)
                 conforming_pm.append(k)
+    print(len(conforming_pm))
     if len(conforming_trace) == 0:
         return {}
     new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
