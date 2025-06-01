@@ -191,7 +191,7 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
     new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
     conforming_trace.append(new_trace)
     total_trace = pd.concat(conforming_trace)
-    dfg = pm4py.discover_dfg(total_trace)
+    dfg = pm4py.discover_dfg(total_trace)[0]
     G = nx.DiGraph()
     for (act_from, act_to), freq in dfg.items():
         G.add_edge(act_from, act_to, weight=freq)
