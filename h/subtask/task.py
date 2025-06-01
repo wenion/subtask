@@ -297,6 +297,8 @@ def update_pm(user_id, shareflow_name, session_id, group_id, shareflow_df):
     trace = shareflow_df
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
+    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.8)
+    exp_steps_timed = []
     if not net:
         return {
             "message": "Fail to update process model",
@@ -317,13 +319,16 @@ def update_pm(user_id, shareflow_name, session_id, group_id, shareflow_df):
                 if row["concept:name"] not in pk_concept_mapping:
                     pk_concept_mapping[row["concept:name"]] = []
                 pk_concept_mapping[row["concept:name"]].append((row["pk"], row["timestamp"]))
+                if row["concept:name"] in exp_steps:
+                    exp_steps_timed.append((row["pk"], row["timestamp"]))
             status = create_process_model(creator=user_id,
                                           create_time=current_timestamp,
                                           group=group_id,
                                           pm_name=shareflow_name,
                                           pm_content=pnml_data,
                                           session_id=session_id,
-                                          pk_concept_mapping=pk_concept_mapping)
+                                          pk_concept_mapping=pk_concept_mapping,
+                                          expert_steps=sorted(exp_steps_timed, key=lambda x: x[1]))
             if not status:
                 logger.error("Error occurred during the update of process model.")
                 return {
