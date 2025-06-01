@@ -726,11 +726,11 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         """
 
         # TODO: change implementation to use windowId and TabId, ClientId will not work properly
-        print("payload", payload["messageType"], payload)
+        print("payload", payload["messageType"])
         global user_status
         current_time = datetime.now().timestamp() * 1000
         message = ""
-        if payload["userid"] not in user_status:
+        if "userid" in payload and payload["userid"] not in user_status:
             user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None}
             logger.info(f"Task matching for user {payload['userid']} has started...")
 
