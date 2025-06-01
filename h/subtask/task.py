@@ -781,12 +781,12 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             if not delete_outcome["removed"]:
                 logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
             else:
-                logger.info(f"PM {shareflow_name}_{session_id} deleted for update by {creator}")
+                logger.info(f"PM {task_name}_{session_id} deleted for update by {creator}")
             update_outcome = update_pm(creator, session_id, task_name, trace_df)
             if not update_outcome["updated"]:
                 logger.error(f"Error updating process model, {creator}, {session_id}, {task_name}; due to {update_outcome['message']}")
             else:
-                logger.info(f"PM {shareflow_name}_{session_id} updated by {creator}")
+                logger.info(f"PM {task_name}_{session_id} updated by {creator}")
 
         elif payload["messageType"] == "PinShareflow":
             status = payload["status"]
