@@ -18,7 +18,7 @@ class ProcessModel(JsonModel):
     pm_content: str = Field(index=True)# process model content
     session_id: str = Field(index=True) # session_id is actually the pk of ShareFlow (user_event_record)
     pk_concept_mapping: dict = Field(index=False)
-    expert_steps: list = Field(index=False, default=[])
+    expert_steps: Optional[list] = Field(index=False, default=[])
 
 
 def fetch_all_process_model():
