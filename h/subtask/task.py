@@ -812,6 +812,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 logger.info(f"PM {task_name}_{session_id} updated by {creator}")
 
         elif payload["messageType"] == "PinShareflow":
+            print(payload)
             status = payload["status"]
             meta = payload["shareflowMeta"]
             session_id = meta["session_id"]
