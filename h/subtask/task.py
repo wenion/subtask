@@ -525,7 +525,7 @@ def task_classification(url, user_id, interval=None):
                     logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
                     continue
                 current_steps = [val[0] for val in match_steps[key]]
-                exp_step = get_next_expert_step(t_name, t_id, match_steps[key][0][0]) if len(match_steps[key]) > 0 else None
+                exp_step = get_next_expert_step(t_name, t_id, match_steps[key][0][1]) if len(match_steps[key]) > 0 else None
                 task_details.append({"user_id": shareflow.userid,
                                      "session_id": shareflow.pk,
                                      "task_name": shareflow.task_name,
@@ -546,7 +546,7 @@ def task_classification(url, user_id, interval=None):
                         logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
                         continue
                     current_steps = [val[0] for val in match_steps[key]]
-                    exp_step = get_next_expert_step(t_name, t_id, match_steps[key][0][0]) if len(match_steps[key]) > 0 else None
+                    exp_step = get_next_expert_step(t_name, t_id, match_steps[key][0][1]) if len(match_steps[key]) > 0 else None
                     task_details.append({"user_id": shareflow.userid,
                                          "session_id": shareflow.pk,
                                          "task_name": shareflow.task_name,
