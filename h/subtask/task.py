@@ -469,6 +469,13 @@ def task_classification(url, user_id, interval=None):
     for k, v in all_process_models.items():
         net, im, fm = v
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
+
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        for a, b in replay_result.items():
+            print(f"{a}: {b}")
+            print("##########################")
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+
         fitness = replay_result["trace_fitness"]
         cur_progress = list(replay_result["enabled_transitions_in_marking"]) # or "enabled_transitions_in_marking" "reached_marking"
         progress = []
