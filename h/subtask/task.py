@@ -833,7 +833,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
                 user_status[payload["userid"]]["interval"] = 5000
-            user_status[payload["userid"]]["pinnedSF"] = None
+            if "pinnedSF" not in user_status[payload["userid"]]:
+                user_status[payload["userid"]]["pinnedSF"] = None
             print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]
