@@ -186,7 +186,6 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
                 formatted_trace["case_id"] = [len(conforming_trace)] * formatted_trace.shape[0]
                 conforming_trace.append(formatted_trace)
                 conforming_pm.append(k)
-    print(len(conforming_pm))
     if len(conforming_trace) == 0:
         return {}
     new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
@@ -198,11 +197,8 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
         G.add_edge(act_from, act_to, weight=freq)
     b_centrality = nx.betweenness_centrality(G, normalized=True, endpoints=False)
     b_centrality = dict(sorted(b_centrality.items(), key=lambda x: x[1], reverse=True))
-    print(b_centrality)
     new_pm_places = [val.name for val in new_pm[0].transitions]
-    print(new_pm_places)
     key_steps = [k for k, v in b_centrality.items() if k in new_pm_places and v > 0.1]
-    print(key_steps)
     for pm in conforming_pm:
         pm_name, session_id = pm.split("_[SEP]_")
         outcome = update_expert_step(pm_name, session_id, key_steps)
@@ -559,10 +555,11 @@ def task_classification(url, user_id, interval=None):
         # randomly select one highest Shareflow if there are multiple matching
         matched_task_idx = random.choice(list(range(len(matched_tasks))))
         logger.info(f"Tasks identified for {user_id}: {matched_tasks[matched_task_idx]} with score {match_score}")
-        print(task_details)
         matched_tasks = [matched_tasks[matched_task_idx]]
         task_details = [task_details[matched_task_idx]]
         tids = [tids[matched_task_idx]]
+
+    print(task_details)
 
     if len(matched_tasks) == 0 or len(task_details) == 0 or len(tids) == 0:
         logger.warning(user_id + ": No task matching")
@@ -596,7 +593,7 @@ def task_classification(url, user_id, interval=None):
     #pr.expire(360) # the push records are stored for 6 minutes, then expire
 
     logger.info(f"Tasks identified for {user_id}: {'; '.join(matched_tasks)} with score {match_score}")
-    print(task_details)
+
     return {
         "task_name": "; ".join(matched_tasks),
         "certainty": match_score,
@@ -646,7 +643,6 @@ def send_push(settings, produce_routing_key):
                             "url": url,
                             "content": response["message"]
                         }
-                        print(reply_message)
                         pub.publish(reply_message, produce_routing_key)
                     user_status[user]["last_match"] = current_time
             for user in to_del:
