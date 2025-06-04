@@ -483,8 +483,11 @@ def task_classification(url, user_id, interval=None):
         match_steps[k] = progress
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
+    print("****************************************")
     print("Matched scores", match_scores)
+    print("++++++++++++++++++++++++++++++++++++++++")
     print("Matched steps", match_steps)
+    print("****************************************")
     if len(match_scores.keys()) == 0:
         logger.warning("No PM for matching yet...")
         return next_request_result
