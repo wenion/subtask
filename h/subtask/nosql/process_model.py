@@ -115,8 +115,7 @@ def get_next_expert_step(pm_name, session_id, cur_timestamp):
     if len(total) > 0:
         pm = total[0]
         for step in pm.expert_steps:
-            print("timestamp", step[1], cur_timestamp[1])
-            if step[1] > cur_timestamp:
+            if step[1] > cur_timestamp[1]:
                 return step[0]
         return pm.expert_steps[0][0] if len(pm.expert_steps) > 0 else None
     return None
