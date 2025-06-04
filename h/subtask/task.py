@@ -17,10 +17,10 @@ from h.subtask.nosql import fetch_user_event, fetch_all_user_event, fetch_all_ev
     fetch_all_user_events_by_session, fetch_all_user_event_within_time, create_process_model, \
     delete_process_model_by_session_creator, fetch_all_process_model, same_as_previous
 from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_name_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
-from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user
-from h.subtask.nosql import is_task_page, stop_pushing
-from h.subtask.nosql.process_model import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
-from h.subtask.nosql.user_event_record import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
+from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user, get_last_within_past_minute_in_task_page
+from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step, update_expert_step
+from h.subtask.nosql import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
+from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
 import pandas as pd
 import numpy as np
 import urllib.parse
@@ -33,6 +33,7 @@ from pm4py.visualization.petri_net import visualizer
 import random
 import pm4py
 import json
+import networkx as nx
 
 
 TRACE_EXCHANGE = "trace"
@@ -78,7 +79,6 @@ logger.info("Service Started!!")
 
 def convert_log_to_formatted(event_log):
     activity = []
-    event_log["event_type"] = event_log["event_type"].replace("recording", "open")
     event_log.sort_values(by=["timestamp"], ascending=[True], inplace=True)
     event_log["time"] = pd.to_datetime(event_log["timestamp"], unit="ms")
     event_log = event_log.reset_index()
@@ -157,6 +157,56 @@ def create_process_model_from_log(event_log):
     return net, im, fm, formatted_event_log
 
 
+def expert_steps(new_trace, new_pm, threshold=0.7):
+    # if mutual fitness pass the pre-determined threshold, the two PMs are considered similar
+    conforming_trace = []
+    conforming_pm = []
+    for k, v in all_process_models.items():
+        net, im, fm = v
+        replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(new_trace, net, im, fm,
+                                                                                     activity_key="concept:name",
+                                                                                     case_id_key="case:concept:name",
+                                                                                     timestamp_key="time:timestamp")[0]
+        fitness = replay_result["trace_fitness"]
+        print(f"new pm TO {k}: {fitness}")
+        if fitness >= threshold:
+            pm_name, session_id = k.split("_[SEP]_")
+            result = fetch_all_events_by_tn_sid(pm_name, session_id)
+            trace = pd.DataFrame(result["table_result"])
+            trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))]  # filter out RECORD events and extension events
+            formatted_trace = convert_log_to_formatted(trace)
+            net, im, fm = new_pm
+            replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm,
+                                                                                         activity_key="concept:name",
+                                                                                         case_id_key="case:concept:name",
+                                                                                         timestamp_key="time:timestamp")[0]
+            fitness = replay_result["trace_fitness"]
+            print(f"{k} TO new pm: {fitness}")
+            if fitness >= threshold:
+                formatted_trace["case_id"] = [len(conforming_trace)] * formatted_trace.shape[0]
+                conforming_trace.append(formatted_trace)
+                conforming_pm.append(k)
+    if len(conforming_trace) == 0:
+        return {}
+    new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
+    conforming_trace.append(new_trace)
+    total_trace = pd.concat(conforming_trace)
+    dfg = pm4py.discover_dfg(total_trace)[0]
+    G = nx.DiGraph()
+    for (act_from, act_to), freq in dfg.items():
+        G.add_edge(act_from, act_to, weight=freq)
+    b_centrality = nx.betweenness_centrality(G, normalized=True, endpoints=False)
+    b_centrality = dict(sorted(b_centrality.items(), key=lambda x: x[1], reverse=True))
+    new_pm_places = [val.name for val in new_pm[0].transitions]
+    key_steps = [k for k, v in b_centrality.items() if k in new_pm_places and v > 0.1]
+    for pm in conforming_pm:
+        pm_name, session_id = pm.split("_[SEP]_")
+        outcome = update_expert_step(pm_name, session_id, key_steps)
+        if not outcome[0]:
+            logger.error(outcome[1])
+    return key_steps
+
+
 def create_pm(user_id, shareflow_name, session_id, group_id):
     user_id = user_id
     shareflow_name = shareflow_name
@@ -171,6 +221,8 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     trace = pd.DataFrame(result["table_result"])
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
+    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+    exp_steps_timed = []
     if not net:
         return {
             "message": "Fail to create process model",
@@ -191,13 +243,16 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
                 if row["concept:name"] not in pk_concept_mapping:
                     pk_concept_mapping[row["concept:name"]] = []
                 pk_concept_mapping[row["concept:name"]].append((row["pk"], row["timestamp"]))
+                if row["concept:name"] in exp_steps:
+                    exp_steps_timed.append((row["pk"], row["timestamp"]))
             status = create_process_model(creator=user_id,
                                           create_time=current_timestamp,
                                           group=group_id,
                                           pm_name=shareflow_name,
                                           pm_content=pnml_data,
                                           session_id=session_id,
-                                          pk_concept_mapping=pk_concept_mapping)
+                                          pk_concept_mapping=pk_concept_mapping,
+                                          expert_steps=sorted(exp_steps_timed, key=lambda x: x[1]))
             if not status:
                 logger.error("Error occurred during the creation of process model.")
                 return {
@@ -237,6 +292,84 @@ def create_pm(user_id, shareflow_name, session_id, group_id):
     return {
         "message": "Process model created",
         "created": True
+    }
+
+
+def update_pm(user_id, shareflow_name, session_id, group_id, shareflow_df):
+    trace = shareflow_df
+    trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
+    net, im, fm, formatted_trace = create_process_model_from_log(trace)
+    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+    exp_steps_timed = []
+    if not net:
+        return {
+            "message": "Fail to update process model",
+            "updated": False
+        }
+    sf_name = shareflow_name.translate(translation_table)
+    current_timestamp = int(datetime.now().timestamp() * 1000)
+    if not os.path.exists("process_models"):
+        os.makedirs("process_models")
+    file_path = f"process_models/{sf_name}_{current_timestamp}.pnml"
+    pm4py.write_pnml(net, im, fm, file_path)
+    try:
+        with open(file_path, 'r') as file:
+            pnml_data = file.read()
+            print(user_id, current_timestamp, group_id, shareflow_name, session_id)
+            pk_concept_mapping = {}
+            for index, row in formatted_trace.iterrows():
+                if row["concept:name"] not in pk_concept_mapping:
+                    pk_concept_mapping[row["concept:name"]] = []
+                pk_concept_mapping[row["concept:name"]].append((row["pk"], row["timestamp"]))
+                if row["concept:name"] in exp_steps:
+                    exp_steps_timed.append((row["pk"], row["timestamp"]))
+            status = create_process_model(creator=user_id,
+                                          create_time=current_timestamp,
+                                          group=group_id,
+                                          pm_name=shareflow_name,
+                                          pm_content=pnml_data,
+                                          session_id=session_id,
+                                          pk_concept_mapping=pk_concept_mapping,
+                                          expert_steps=sorted(exp_steps_timed, key=lambda x: x[1]))
+            if not status:
+                logger.error("Error occurred during the update of process model.")
+                return {
+                    "message": "Error occurred during the update of process model.",
+                    "updated": False
+                }
+    except FileNotFoundError:
+        logger.error("File not found. Please check the file path.")
+        return {
+            "message": "File not found during update of process model. Please retry!",
+            "updated": False
+        }
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        return {
+            "message": f"An error occurred: {e}",
+            "updated": False
+        }
+    os.remove(file_path)
+    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm)
+    parameters = {"format": "png"}
+    gviz = visualizer.apply(net, im, fm, parameters=parameters)
+    visualizer.save(gviz, f"process_models/{sf_name}_{current_timestamp}.png")
+    logger.info(f"PM {shareflow_name}_{session_id} updated by {user_id}")
+    # store all task pages
+    all_urls = set(trace["base_url"].unique().tolist())
+    all_domains = set()
+    for url in all_urls:
+        parsed_url = urlparse(url)
+        if parsed_url:
+            domain = parsed_url.netloc
+            if domain:
+                all_domains.add(domain)
+    for domain in all_domains:
+        add_task_page(url=domain, pm_name=shareflow_name, session_id=session_id)
+        logger.info(f"{domain} added as task page.")
+    return {
+        "message": "Process model updated",
+        "updated": True
     }
 
 
@@ -303,6 +436,7 @@ def task_classification(url, user_id, interval=None):
     time_ago = current_time - timedelta(seconds=time_delta)
     time_ago = int(time_ago.timestamp() * 1000)
     result = fetch_all_user_event_within_time(user_id, time_ago)
+    previous_push = get_last_within_past_minute_in_task_page(user_id, url)
     trace = pd.DataFrame(result["table_result"])
 
     if trace is None or len(trace) < 1:
@@ -320,7 +454,8 @@ def task_classification(url, user_id, interval=None):
                 logger.warning(f"{user_id} is detected to be inactive for more than 5 minutes")
             idle_result["interval"] = idle_result["interval"] * multiplier
             return idle_result
-        return next_request_result
+        if not previous_push:
+            return next_request_result
     if len(trace) > 0 and user_id in idle_status and idle_status[user_id] > 0:
         del idle_status[user_id]
     formatted_trace = convert_log_to_formatted(trace)
@@ -330,8 +465,15 @@ def task_classification(url, user_id, interval=None):
     for k, v in all_process_models.items():
         net, im, fm = v
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
+
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        for a, b in replay_result.items():
+            print(f"{a}: {b}")
+            print("##########################")
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+
         fitness = replay_result["trace_fitness"]
-        cur_progress = list(replay_result["enabled_transitions_in_marking"])
+        cur_progress = list(replay_result["enabled_transitions_in_marking"]) # or "enabled_transitions_in_marking" "reached_marking"
         progress = []
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
@@ -344,8 +486,11 @@ def task_classification(url, user_id, interval=None):
         match_steps[k] = progress
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
+    print("****************************************")
     print("Matched scores", match_scores)
+    print("++++++++++++++++++++++++++++++++++++++++")
     print("Matched steps", match_steps)
+    print("****************************************")
     if len(match_scores.keys()) == 0:
         logger.warning("No PM for matching yet...")
         return next_request_result
@@ -355,7 +500,8 @@ def task_classification(url, user_id, interval=None):
     # not pushing if all match scores below threshold
     if match_score < 0.25:
         logger.warning(user_id + ": No task matching")
-        return next_request_result
+        if not previous_push:
+            return next_request_result
 
     # in the process model dictionary storing all PMs in the current session, the keys are <PM_name>_[SEP]_<session_id>
     # "_[SEP]_" is added as a separator, when displaying, it is important to exclude the session ID
@@ -371,18 +517,17 @@ def task_classification(url, user_id, interval=None):
             t_name, t_id = key.split("_[SEP]_") # t_id has been updated to pk of shareflow
             shareflow = fetch_user_event_record_by_pk(t_id)
             if shareflow:
-                # task_details.append({"pk": shareflow.pk,
-                #                      "session_id": shareflow.session_id,
-                #                      "user_id": shareflow.userid,
-                #                      "task_name": shareflow.task_name,
-                #                      "certainty": value})
                 if shareflow.userid == user_id:
                     logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
                     continue
+                current_steps = [val[0] for val in match_steps[key]]
+                exp_step = get_next_expert_step(t_name, t_id, match_steps[key][0][1]) if len(match_steps[key]) > 0 else None
                 task_details.append({"user_id": shareflow.userid,
                                      "session_id": shareflow.pk,
                                      "task_name": shareflow.task_name,
-                                     "current_step": [val[0] for val in match_steps[key]]})
+                                     "current_step": current_steps,
+                                     "expert_step": exp_step,
+                                     "match_score": value})
                 tids.append(shareflow.pk)
                 matched_tasks.append(t_name)
                 count += 1
@@ -392,32 +537,40 @@ def task_classification(url, user_id, interval=None):
                 t_name, t_id = key.split("_[SEP]_")  # t_id has been updated to pk of shareflow
                 shareflow = fetch_user_event_record_by_pk(t_id)
                 if shareflow:
-                    # task_details.append({"pk": shareflow.pk,
-                    #                      "session_id": shareflow.session_id,
-                    #                      "user_id": shareflow.userid,
-                    #                      "task_name": shareflow.task_name,
-                    #                      "certainty": value})
                     if shareflow.userid == user_id:
                         # if the PM creator is the current user, don't append it to the list
                         logger.warning(f"{user_id} was matched with own PM {key} (fitness: {value})")
                         continue
+                    current_steps = [val[0] for val in match_steps[key]]
+                    exp_step = get_next_expert_step(t_name, t_id, match_steps[key][0][1]) if len(match_steps[key]) > 0 else None
                     task_details.append({"user_id": shareflow.userid,
                                          "session_id": shareflow.pk,
                                          "task_name": shareflow.task_name,
-                                         "current_step": [val[0] for val in match_steps[key]]})
+                                         "current_step": current_steps,
+                                         "expert_step": exp_step,
+                                         "match_score": value})
                     tids.append(shareflow.pk)
                     matched_tasks.append(t_name)
                     count += 1
         # randomly select one highest Shareflow if there are multiple matching
         matched_task_idx = random.choice(list(range(len(matched_tasks))))
         logger.info(f"Tasks identified for {user_id}: {matched_tasks[matched_task_idx]} with score {match_score}")
-        print(task_details)
         matched_tasks = [matched_tasks[matched_task_idx]]
         task_details = [task_details[matched_task_idx]]
         tids = [tids[matched_task_idx]]
 
+    print(task_details)
+
     if len(matched_tasks) == 0 or len(task_details) == 0 or len(tids) == 0:
         logger.warning(user_id + ": No task matching")
+        if not previous_push:
+            return next_request_result
+        else:
+            task_details = previous_push
+
+    # has pinned shareflow and the pinned one is within the identified tasks -> no action
+    if user_status[user_id]["pinnedSF"] and user_status[user_id]["pinnedSF"][0] in tids and user_status[user_id]["pinnedSF"][1] in matched_tasks:
+        logger.info(user_id + "has pinned SF, which is one of the identified tasks; no push")
         return next_request_result
 
     push_message = "The following ShareFlows from your colleagues might be useful: "
@@ -440,7 +593,7 @@ def task_classification(url, user_id, interval=None):
     #pr.expire(360) # the push records are stored for 6 minutes, then expire
 
     logger.info(f"Tasks identified for {user_id}: {'; '.join(matched_tasks)} with score {match_score}")
-    print(task_details)
+
     return {
         "task_name": "; ".join(matched_tasks),
         "certainty": match_score,
@@ -460,7 +613,10 @@ def send_push(settings, produce_routing_key):
         while True:
             current_time = datetime.now().timestamp() * 1000
             to_del = []
-            for user, status in user_status.items():
+            for user in list(user_status.keys()):
+                status = None
+                if user in user_status:
+                    status = user_status[user]
                 interval = status["interval"]
                 if interval < 0:
                     continue
@@ -487,7 +643,6 @@ def send_push(settings, produce_routing_key):
                             "url": url,
                             "content": response["message"]
                         }
-                        print(reply_message)
                         pub.publish(reply_message, produce_routing_key)
                     user_status[user]["last_match"] = current_time
             for user in to_del:
@@ -590,11 +745,11 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         """
 
         # TODO: change implementation to use windowId and TabId, ClientId will not work properly
-        print("payload", payload["messageType"], payload["type"])
+        print("payload", payload["messageType"])
         global user_status
         current_time = datetime.now().timestamp() * 1000
         message = ""
-        if payload["userid"] not in user_status:
+        if "userid" in payload and payload["userid"] not in user_status:
             user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None}
             logger.info(f"Task matching for user {payload['userid']} has started...")
 
@@ -635,6 +790,35 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             logger.info(f"PM {shareflow_name}_{session_id} deleted by {user_id}")
             return True
 
+        elif payload["messageType"] == "UpdateShareflow":
+            meta = payload["shareflowMeta"]
+            session_id = meta["sessionId"]
+            task_name = meta["taskName"]
+            creator = meta["userid"]
+            group_id = meta["groupid"]
+            trace_df = pd.DataFrame(payload["update"])
+            #trace_df = trace_df.rename(columns={"textContent": "text_content", "type": "event_type", "tagName": "tag_name", "url": "base_url", "sessionId": "session_id"})
+            delete_outcome = delete_pm(creator, session_id, task_name)
+            if not delete_outcome["removed"]:
+                logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
+            else:
+                logger.info(f"PM {task_name}_{session_id} deleted for update by {creator}")
+            update_outcome = update_pm(creator, task_name, session_id, group_id, trace_df)
+            if not update_outcome["updated"]:
+                logger.error(f"Error updating process model, {creator}, {session_id}, {task_name}; due to {update_outcome['message']}")
+            else:
+                logger.info(f"PM {task_name}_{session_id} updated by {creator}")
+
+        elif payload["messageType"] == "PinShareflow":
+            status = payload["status"]
+            meta = payload["shareflowMeta"]
+            session_id = meta["session_id"]
+            task_name = meta["task_name"]
+            if status == "pin":
+                user_status[payload["userid"]]["pinnedSF"] = (session_id, task_name)
+            elif status == "unpin":
+                user_status[payload["userid"]]["pinnedSF"] = None
+
         elif payload["messageType"] == "TraceData":
             # task classification info
             user_status[payload["userid"]]["last_active"] = current_time
@@ -648,6 +832,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
                 user_status[payload["userid"]]["interval"] = 5000
+            user_status[payload["userid"]]["pinnedSF"] = None
             print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]
