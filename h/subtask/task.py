@@ -569,6 +569,8 @@ def task_classification(url, user_id, interval=None):
             task_details = previous_push
 
     # has pinned shareflow and the pinned one is within the identified tasks -> no action
+    print(user_status[user_id]["pinnedSF"][0], tids)
+    print(user_status[user_id]["pinnedSF"][1], matched_tasks)
     if user_status[user_id]["pinnedSF"] and user_status[user_id]["pinnedSF"][0] in tids and user_status[user_id]["pinnedSF"][1] in matched_tasks:
         logger.info(user_id + "has pinned SF, which is one of the identified tasks; no push")
         return next_request_result
