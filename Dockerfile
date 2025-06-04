@@ -25,7 +25,8 @@ RUN apt-get update && apt-get install -y \
     nginx \
     git \
     dos2unix \
-    graphviz
+    graphviz \
+    vim
 
 # Create the hypothesis user, group, home directory and package directory.
 RUN groupadd --system hypothesis && useradd --system --gid hypothesis --home-dir /var/lib/hypothesis --create-home hypothesis
