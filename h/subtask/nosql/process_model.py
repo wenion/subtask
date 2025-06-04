@@ -18,7 +18,7 @@ class ProcessModel(JsonModel):
     pm_content: str = Field(index=True)# process model content
     session_id: str = Field(index=True) # session_id is actually the pk of ShareFlow (user_event_record)
     pk_concept_mapping: dict = Field(index=False)
-    expert_steps: list = Field(index=False)
+    expert_steps: Optional[list] = Field(index=False, default=[])
 
 
 def fetch_all_process_model():
@@ -126,7 +126,7 @@ def update_expert_step(pm_name, session_id, expert_steps):
     total = query.all()
     if len(total) > 0:
         pm = total[0]
-        cur_expert_steps = pm.expert_steps
+        cur_expert_steps = pm.expert_steps if pm.expert_steps else []
         cur_expert_step_pks = [val[0] for val in cur_expert_steps]
         pk_concept_mapping = pm.pk_concept_mapping
         for step in expert_steps:
