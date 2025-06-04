@@ -609,7 +609,10 @@ def send_push(settings, produce_routing_key):
         while True:
             current_time = datetime.now().timestamp() * 1000
             to_del = []
-            for user, status in user_status.items():
+            for user in list(user_status.keys()):
+                status = None
+                if user in user_status:
+                    status = user_status[user]
                 interval = status["interval"]
                 if interval < 0:
                     continue
