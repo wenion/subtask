@@ -569,8 +569,6 @@ def task_classification(url, user_id, interval=None):
             task_details = previous_push
 
     # has pinned shareflow and the pinned one is within the identified tasks -> no action
-    print(user_status[user_id]["pinnedSF"][0], tids)
-    print(user_status[user_id]["pinnedSF"][1], matched_tasks)
     if user_status[user_id]["pinnedSF"] and user_status[user_id]["pinnedSF"][0] in tids and user_status[user_id]["pinnedSF"][1] in matched_tasks:
         logger.info(user_id + "has pinned SF, which is one of the identified tasks; no push")
         return next_request_result
@@ -799,7 +797,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             creator = meta["userid"]
             group_id = meta["groupid"]
             trace_df = pd.DataFrame(payload["update"])
-            #trace_df = trace_df.rename(columns={"textContent": "text_content", "type": "event_type", "tagName": "tag_name", "url": "base_url", "sessionId": "session_id"})
+            trace_df = trace_df.rename(columns={"textContent": "text_content", "type": "event_type", "tagName": "tag_name", "url": "base_url", "sessionId": "session_id"})
             delete_outcome = delete_pm(creator, session_id, task_name)
             if not delete_outcome["removed"]:
                 logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
@@ -835,7 +833,8 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
                 user_status[payload["userid"]]["interval"] = 5000
-            user_status[payload["userid"]]["pinnedSF"] = None
+            if "pinnedSF" not in user_status[payload["userid"]]:
+                user_status[payload["userid"]]["pinnedSF"] = None
             print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]
