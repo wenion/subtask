@@ -435,6 +435,12 @@ def task_classification(url, user_id, interval=None):
         time_delta = interval_in_second
     time_ago = current_time - timedelta(seconds=time_delta)
     time_ago = int(time_ago.timestamp() * 1000)
+
+    test_time = current_time - timedelta(days=365)
+    test_time = int(test_time.timestamp() * 1000)
+    temp = pd.DataFrame(fetch_all_user_event_within_time(user_id, test_time)["table_result"])
+    print("latest record time", max(temp["timestamp"].tolist()))
+    
     result = fetch_all_user_event_within_time(user_id, time_ago)
     previous_push = get_last_within_past_minute_in_task_page(user_id, url)
     trace = pd.DataFrame(result["table_result"])
