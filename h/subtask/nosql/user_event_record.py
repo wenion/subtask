@@ -22,7 +22,9 @@ class UserEventRecord(JsonModel):
     completed: int = Field(index=True)
     userid: str = Field(index=True)
     groupid: str = Field(index=True)
+    groups: Optional[str] = Field(index=True)
     shared: int = Field(index=True)
+
 
 
 def fetch_all_user_event_record():
