@@ -797,7 +797,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             creator = meta["userid"]
             group_id = meta["groupid"]
             trace_df = pd.DataFrame(payload["update"])
-            #trace_df = trace_df.rename(columns={"textContent": "text_content", "type": "event_type", "tagName": "tag_name", "url": "base_url", "sessionId": "session_id"})
+            trace_df = trace_df.rename(columns={"textContent": "text_content", "type": "event_type", "tagName": "tag_name", "url": "base_url", "sessionId": "session_id"})
             delete_outcome = delete_pm(creator, session_id, task_name)
             if not delete_outcome["removed"]:
                 logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
