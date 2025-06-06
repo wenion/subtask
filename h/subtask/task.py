@@ -34,6 +34,7 @@ import random
 import pm4py
 import json
 import networkx as nx
+import time
 
 
 TRACE_EXCHANGE = "trace"
@@ -429,18 +430,15 @@ def task_classification(url, user_id, interval=None):
         logger.info(user_id + ": Stop pushing criteria matched")
         return {"task_name": "", "certainty": 0, "message": "", "interval": 60000, "task_ids": [], "task_details": [], "show_flag": False}
 
-    time_delta = 11
+    time_delta = 20
     interval_in_second = interval / 1000
     if interval_in_second > time_delta:
         time_delta = interval_in_second
+
     time_ago = current_time - timedelta(seconds=time_delta)
     time_ago = int(time_ago.timestamp() * 1000)
 
-    test_time = current_time - timedelta(days=365)
-    test_time = int(test_time.timestamp() * 1000)
-    temp = pd.DataFrame(fetch_all_user_event_within_time(user_id, test_time)["table_result"])
-    print("latest record time", max(temp["timestamp"].tolist()))
-    
+    time.sleep(2)
     result = fetch_all_user_event_within_time(user_id, time_ago)
     previous_push = get_last_within_past_minute_in_task_page(user_id, url)
     trace = pd.DataFrame(result["table_result"])
@@ -472,12 +470,6 @@ def task_classification(url, user_id, interval=None):
         net, im, fm = v
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
 
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        for a, b in replay_result.items():
-            print(f"{a}: {b}")
-            print("##########################")
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-
         fitness = replay_result["trace_fitness"]
         cur_progress = list(replay_result["enabled_transitions_in_marking"]) # or "enabled_transitions_in_marking" "reached_marking"
         progress = []
@@ -495,8 +487,6 @@ def task_classification(url, user_id, interval=None):
     print("****************************************")
     print("Matched scores", match_scores)
     print("++++++++++++++++++++++++++++++++++++++++")
-    print("Matched steps", match_steps)
-    print("****************************************")
     if len(match_scores.keys()) == 0:
         logger.warning("No PM for matching yet...")
         return next_request_result
