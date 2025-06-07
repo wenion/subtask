@@ -136,39 +136,6 @@ def create_process_model_from_log(event_log):
     return net, im, fm, formatted_event_log
 
 
-def load_all_process_models():
-    process_models = fetch_all_process_model()
-    if process_models:
-        for pm in process_models:
-            record = fetch_user_event_record_by_pk(pk=pm.session_id)
-            if not record:
-                # if Shareflow doesn't exist, delete the PM
-                delete_process_model(pm.pk)
-                logger.error(f"{pm.pm_name} {pm.session_id} {pm.creator} NOT FOUND UPON CHECKING AND DELETED")
-                continue
-            pm_string = pm.pm_content
-            net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
-            all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
-            logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
-            trace = fetch_all_events_by_tn_sid(pm.pm_name, pm.session_id)["table_result"]
-            formatted_trace = convert_log_to_formatted(pd.DataFrame(trace))
-            exp_steps = expert_steps(formatted_trace, new_pm=(net, im, fm), threshold=0.7)
-            exp_steps_timed = []
-            for index, row in formatted_trace.iterrows():
-                if row["concept:name"] in exp_steps:
-                    exp_steps_timed.append((row["pk"], row["timestamp"]))
-            outcome = set_expert_step(pm.pm_name, pm.session_id, exp_steps_timed)
-            if not outcome[0]:
-                logger.error(outcome[1])
-            else:
-                logger.info(outcome[1])
-
-
-
-logger.info("Loading Process Models...")
-load_all_process_models()
-logger.info("Service Started!!")
-
 def expert_steps(new_trace, new_pm, threshold=0.7):
     # if mutual fitness pass the pre-determined threshold, the two PMs are considered similar
     conforming_trace = []
@@ -217,6 +184,40 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
         if not outcome[0]:
             logger.error(outcome[1])
     return key_steps
+
+
+def load_all_process_models():
+    process_models = fetch_all_process_model()
+    if process_models:
+        for pm in process_models:
+            record = fetch_user_event_record_by_pk(pk=pm.session_id)
+            if not record:
+                # if Shareflow doesn't exist, delete the PM
+                delete_process_model(pm.pk)
+                logger.error(f"{pm.pm_name} {pm.session_id} {pm.creator} NOT FOUND UPON CHECKING AND DELETED")
+                continue
+            pm_string = pm.pm_content
+            net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
+            all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
+            logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
+            trace = fetch_all_events_by_tn_sid(pm.pm_name, pm.session_id)["table_result"]
+            formatted_trace = convert_log_to_formatted(pd.DataFrame(trace))
+            exp_steps = expert_steps(formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+            exp_steps_timed = []
+            for index, row in formatted_trace.iterrows():
+                if row["concept:name"] in exp_steps:
+                    exp_steps_timed.append((row["pk"], row["timestamp"]))
+            outcome = set_expert_step(pm.pm_name, pm.session_id, exp_steps_timed)
+            if not outcome[0]:
+                logger.error(outcome[1])
+            else:
+                logger.info(outcome[1])
+
+
+
+logger.info("Loading Process Models...")
+load_all_process_models()
+logger.info("Service Started!!")
 
 
 def create_pm(user_id, shareflow_name, session_id, group_id):
