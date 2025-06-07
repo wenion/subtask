@@ -143,3 +143,17 @@ def update_expert_step(pm_name, session_id, expert_steps):
         except Exception as e:
             return False, str(e)
     return False, "Process Model not found"
+
+
+def set_expert_step(pm_name, session_id, expert_steps):
+    query = ProcessModel.find((ProcessModel.session_id == session_id) & (ProcessModel.pm_name == pm_name))
+    total = query.all()
+    if len(total) > 0:
+        pm = total[0]
+        pm.expert_steps = expert_steps
+        try:
+            pm.save()
+            return True, "Expert steps set"
+        except Exception as e:
+            return False, str(e)
+    return False, "Process Model not found"

@@ -20,7 +20,7 @@ from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_na
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user, get_last_within_past_minute_in_task_page
 from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step, update_expert_step
 from h.subtask.nosql import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
-from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
+from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk, set_expert_step
 import pandas as pd
 import numpy as np
 import urllib.parse
@@ -71,6 +71,19 @@ def load_all_process_models():
             net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
             all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
             logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
+            trace = fetch_all_events_by_tn_sid(pm.task_name, pm.session_id)
+            formatted_trace = convert_log_to_formatted(trace)
+            exp_steps = expert_steps(formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+            exp_steps_timed = []
+            for index, row in formatted_trace.iterrows():
+                if row["concept:name"] in exp_steps:
+                    exp_steps_timed.append((row["pk"], row["timestamp"]))
+            outcome = set_expert_step(pm.pm_name, pm.session_id, exp_steps_timed)
+            if not outcome[0]:
+                logger.error(outcome[1])
+            else:
+                logger.info(outcome[1])
+
 
 
 logger.info("Loading Process Models...")
@@ -622,13 +635,13 @@ def send_push(settings, produce_routing_key):
                 if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
-                    gevent.sleep(0.1)
+                    gevent.sleep(0.5)
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
                     print(user_status)
                     if response["show_flag"]:
-                        gevent.sleep(0.1)
+                        gevent.sleep(0.5)
                         reply_message = {
                             "client_id": user_status[user]["client_id"],
                             "type": "ShareFlow Notification",
