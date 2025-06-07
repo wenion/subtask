@@ -425,7 +425,7 @@ def delete_pm(user_id, session_id, shareflow_name):
     }
 
 
-def task_classification(url, user_id, interval=None):
+def task_classification(url, user_id, interval=5000):
     invalid_result = {"task_name": "", "certainty": 0, "message": "", "interval": -1, "task_ids": [], "task_details": [], "show_flag": False}
     next_request_result = {"task_name": "", "certainty": 0, "message": "", "interval": 5000, "task_ids": [], "task_details": [], "show_flag": False}
     current_time = datetime.now()
@@ -435,7 +435,6 @@ def task_classification(url, user_id, interval=None):
         logger.warning("Invalid URL information!")
         return invalid_result
     user_id = user_id
-    interval = 5000
     if interval:
         interval = int(interval)
     if interval == 0:
@@ -766,7 +765,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         current_time = datetime.now().timestamp() * 1000
         message = ""
         if "userid" in payload and payload["userid"] not in user_status:
-            user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None}
+            user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None, "url": payload["url"]}
             logger.info(f"Task matching for user {payload['userid']} has started...")
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
@@ -848,6 +847,11 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["url"] = payload["url"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
+                # if user switches from a non task page to a task page, reactivate task matching
+                user_status[payload["userid"]]["interval"] = 5000
+            if payload["url"] != user_status[payload["userid"]]["url"]:
+                # if user goes to a new page, the interval should be reset
+                user_status[payload["userid"]]["url"] = payload["url"]
                 user_status[payload["userid"]]["interval"] = 5000
             if "pinnedSF" not in user_status[payload["userid"]]:
                 user_status[payload["userid"]]["pinnedSF"] = None
