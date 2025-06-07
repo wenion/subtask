@@ -151,7 +151,7 @@ def load_all_process_models():
             all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
             logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
             trace = fetch_all_events_by_tn_sid(pm.pm_name, pm.session_id)["table_result"]
-            formatted_trace = convert_log_to_formatted(trace)
+            formatted_trace = convert_log_to_formatted(pd.DataFrame(trace))
             exp_steps = expert_steps(formatted_trace, new_pm=(net, im, fm), threshold=0.7)
             exp_steps_timed = []
             for index, row in formatted_trace.iterrows():
