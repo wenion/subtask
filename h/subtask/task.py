@@ -457,7 +457,6 @@ def task_classification(url, user_id, interval=5000):
     time_ago = current_time - timedelta(seconds=time_delta)
     time_ago = int(time_ago.timestamp() * 1000)
 
-    time.sleep(2)
     result = fetch_all_user_event_within_time(user_id, time_ago)
     previous_push = get_last_within_past_minute_in_task_page(user_id, url)
     trace = pd.DataFrame(result["table_result"])
@@ -638,7 +637,6 @@ def send_push(settings, produce_routing_key):
                 elif interval >= 900000:
                     to_del.append(user)
                     continue
-                gevent.sleep(0.1)
                 if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= user_status[user]["interval"] and current_time - status["last_match"] >= user_status[user]["interval"]:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
