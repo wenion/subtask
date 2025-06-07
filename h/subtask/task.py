@@ -153,7 +153,7 @@ def create_process_model_from_log(event_log):
     return net, im, fm, formatted_event_log
 
 
-def expert_steps(new_trace, new_pm, threshold=0.7):
+def expert_steps(new_trace, new_pm, threshold=0.7, include_self=True):
     # if mutual fitness pass the pre-determined threshold, the two PMs are considered similar
     conforming_trace = []
     conforming_pm = []
@@ -184,8 +184,9 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
                 conforming_pm.append(k)
     if len(conforming_trace) == 0:
         return {}
-    new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
-    conforming_trace.append(new_trace)
+    if include_self:
+        new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
+        conforming_trace.append(new_trace)
     total_trace = pd.concat(conforming_trace)
     dfg = pm4py.discover_dfg(total_trace)[0]
     G = nx.DiGraph()
@@ -206,7 +207,7 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
 def load_expert_steps_for_pm(pm_name, session_id, pm):
     trace = fetch_all_events_by_tn_sid(pm_name, session_id)["table_result"]
     formatted_trace = convert_log_to_formatted(pd.DataFrame(trace))
-    exp_steps = expert_steps(formatted_trace, new_pm=pm, threshold=0.7)
+    exp_steps = expert_steps(formatted_trace, new_pm=pm, threshold=0.7, include_self=False)
     exp_steps_timed = []
     for index, row in formatted_trace.iterrows():
         if row["concept:name"] in exp_steps:
