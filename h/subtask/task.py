@@ -629,6 +629,7 @@ def send_push(settings, produce_routing_key):
             current_time = datetime.now().timestamp() * 1000
             to_del = []
             for user in list(user_status.keys()):
+                gevent.sleep(0.5)
                 status = None
                 if user in user_status:
                     status = user_status[user]
@@ -638,7 +639,6 @@ def send_push(settings, produce_routing_key):
                 elif interval >= 900000:
                     to_del.append(user)
                     continue
-                gevent.sleep(0.1)
                 if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
@@ -667,7 +667,6 @@ def send_push(settings, produce_routing_key):
                     logger.info(f"Matching stopped for user {user} due to inactivity for 15 minutes")
                 if user in idle_status:
                     del idle_status[user]
-            gevent.sleep(0.1)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Shutting down task matching loop...")
     except Exception as e:
