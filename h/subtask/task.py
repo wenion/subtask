@@ -20,7 +20,7 @@ from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_na
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user, get_last_within_past_minute_in_task_page
 from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step, update_expert_step
 from h.subtask.nosql import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
-from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk
+from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk, set_expert_step
 import pandas as pd
 import numpy as np
 import urllib.parse
@@ -71,11 +71,6 @@ def load_all_process_models():
             net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
             all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
             logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
-
-
-logger.info("Loading Process Models...")
-load_all_process_models()
-logger.info("Service Started!!")
 
 
 def convert_log_to_formatted(event_log):
@@ -158,7 +153,7 @@ def create_process_model_from_log(event_log):
     return net, im, fm, formatted_event_log
 
 
-def expert_steps(new_trace, new_pm, threshold=0.7):
+def expert_steps(new_trace, new_pm, threshold=0.7, include_self=True):
     # if mutual fitness pass the pre-determined threshold, the two PMs are considered similar
     conforming_trace = []
     conforming_pm = []
@@ -189,8 +184,9 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
                 conforming_pm.append(k)
     if len(conforming_trace) == 0:
         return {}
-    new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
-    conforming_trace.append(new_trace)
+    if include_self:
+        new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
+        conforming_trace.append(new_trace)
     total_trace = pd.concat(conforming_trace)
     dfg = pm4py.discover_dfg(total_trace)[0]
     G = nx.DiGraph()
@@ -206,6 +202,30 @@ def expert_steps(new_trace, new_pm, threshold=0.7):
         if not outcome[0]:
             logger.error(outcome[1])
     return key_steps
+
+
+def load_expert_steps_for_pm(pm_name, session_id, pm):
+    trace = fetch_all_events_by_tn_sid(pm_name, session_id)["table_result"]
+    formatted_trace = convert_log_to_formatted(pd.DataFrame(trace))
+    exp_steps = expert_steps(formatted_trace, new_pm=pm, threshold=0.7, include_self=False)
+    exp_steps_timed = []
+    for index, row in formatted_trace.iterrows():
+        if row["concept:name"] in exp_steps:
+            exp_steps_timed.append((row["pk"], row["timestamp"]))
+    outcome = set_expert_step(pm_name, session_id, exp_steps_timed)
+    if not outcome[0]:
+        logger.error(outcome[1])
+    else:
+        logger.info(outcome[1])
+
+
+
+logger.info("Loading Process Models...")
+load_all_process_models()
+for k, v in all_process_models.items():
+    tn, sid = k.split("_[SEP]_")
+    load_expert_steps_for_pm(tn, sid, v)
+logger.info("Service Started!!")
 
 
 def create_pm(user_id, shareflow_name, session_id, group_id):
@@ -405,7 +425,7 @@ def delete_pm(user_id, session_id, shareflow_name):
     }
 
 
-def task_classification(url, user_id, interval=None):
+def task_classification(url, user_id, interval=5000):
     invalid_result = {"task_name": "", "certainty": 0, "message": "", "interval": -1, "task_ids": [], "task_details": [], "show_flag": False}
     next_request_result = {"task_name": "", "certainty": 0, "message": "", "interval": 5000, "task_ids": [], "task_details": [], "show_flag": False}
     current_time = datetime.now()
@@ -415,7 +435,6 @@ def task_classification(url, user_id, interval=None):
         logger.warning("Invalid URL information!")
         return invalid_result
     user_id = user_id
-    interval = 5000
     if interval:
         interval = int(interval)
     if interval == 0:
@@ -438,7 +457,6 @@ def task_classification(url, user_id, interval=None):
     time_ago = current_time - timedelta(seconds=time_delta)
     time_ago = int(time_ago.timestamp() * 1000)
 
-    time.sleep(2)
     result = fetch_all_user_event_within_time(user_id, time_ago)
     previous_push = get_last_within_past_minute_in_task_page(user_id, url)
     trace = pd.DataFrame(result["table_result"])
@@ -619,10 +637,10 @@ def send_push(settings, produce_routing_key):
                 elif interval >= 900000:
                     to_del.append(user)
                     continue
-                if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= interval and current_time - status["last_match"] >= interval:
+                gevent.sleep(0.1)
+                if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= user_status[user]["interval"] and current_time - status["last_match"] >= user_status[user]["interval"]:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
-                    gevent.sleep(0.1)
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
@@ -746,7 +764,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         current_time = datetime.now().timestamp() * 1000
         message = ""
         if "userid" in payload and payload["userid"] not in user_status:
-            user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None}
+            user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None, "url": payload["url"]}
             logger.info(f"Task matching for user {payload['userid']} has started...")
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
@@ -828,6 +846,11 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             user_status[payload["userid"]]["url"] = payload["url"]
             user_status[payload["userid"]]["client_id"] = payload["client_id"]
             if user_status[payload["userid"]]["interval"] < 0 and is_task_page(payload["url"]):
+                # if user switches from a non task page to a task page, reactivate task matching
+                user_status[payload["userid"]]["interval"] = 5000
+            if payload["url"] != user_status[payload["userid"]]["url"]:
+                # if user goes to a new page, the interval should be reset
+                user_status[payload["userid"]]["url"] = payload["url"]
                 user_status[payload["userid"]]["interval"] = 5000
             if "pinnedSF" not in user_status[payload["userid"]]:
                 user_status[payload["userid"]]["pinnedSF"] = None
