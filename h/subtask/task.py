@@ -642,13 +642,13 @@ def send_push(settings, produce_routing_key):
                 if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= user_status[user]["interval"] and current_time - status["last_match"] >= user_status[user]["interval"]:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
-                    gevent.sleep(0.5)
+                    gevent.sleep(0.1)
                     response = task_classification(url, user, interval)
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
                     print(user_status)
                     if response["show_flag"]:
-                        gevent.sleep(0.5)
+                        gevent.sleep(0.1)
                         reply_message = {
                             "client_id": user_status[user]["client_id"],
                             "type": "ShareFlow Notification",
@@ -667,7 +667,7 @@ def send_push(settings, produce_routing_key):
                     logger.info(f"Matching stopped for user {user} due to inactivity for 15 minutes")
                 if user in idle_status:
                     del idle_status[user]
-            gevent.sleep(0.2)
+            gevent.sleep(0.1)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Shutting down task matching loop...")
     except Exception as e:
