@@ -150,7 +150,7 @@ def load_all_process_models():
             net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
             all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
             logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
-            trace = fetch_all_events_by_tn_sid(pm.pm_name, pm.session_id)
+            trace = fetch_all_events_by_tn_sid(pm.pm_name, pm.session_id)["table_result"]
             formatted_trace = convert_log_to_formatted(trace)
             exp_steps = expert_steps(formatted_trace, new_pm=(net, im, fm), threshold=0.7)
             exp_steps_timed = []
