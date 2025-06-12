@@ -449,7 +449,7 @@ def task_classification(url, user_id, interval=5000):
         logger.info(user_id + ": Stop pushing criteria matched")
         return {"task_name": "", "certainty": 0, "message": "", "interval": 60000, "task_ids": [], "task_details": [], "show_flag": False}
 
-    time_delta = 20
+    time_delta = 14
     interval_in_second = interval / 1000
     if interval_in_second > time_delta:
         time_delta = interval_in_second
@@ -480,6 +480,10 @@ def task_classification(url, user_id, interval=5000):
             return next_request_result
     if len(trace) > 0 and user_id in idle_status and idle_status[user_id] > 0:
         del idle_status[user_id]
+    trace = trace[(~trace["tag_name"].str.startswith("EXPERT")) & (~trace["tag_name"].str.startswith("HYPOTHESIS"))]
+    if trace and len(trace) == 0:
+        logger.warning(f"{user_id}: User is interacting with side-bar or expert push" + " " + current_time.strftime("%Y-%m-%d %H:%M:%S.%f"))
+        return next_request_result
     formatted_trace = convert_log_to_formatted(trace)
 
     match_scores = {}
@@ -502,9 +506,9 @@ def task_classification(url, user_id, interval=5000):
         match_steps[k] = progress
 
     match_scores = dict(sorted(match_scores.items(), key=lambda item: item[1], reverse=True))
-    print("****************************************")
-    print("Matched scores", match_scores)
-    print("++++++++++++++++++++++++++++++++++++++++")
+    #print("****************************************")
+    #print("Matched scores", match_scores)
+    #print("++++++++++++++++++++++++++++++++++++++++")
     if len(match_scores.keys()) == 0:
         logger.warning("No PM for matching yet...")
         return next_request_result
@@ -573,7 +577,7 @@ def task_classification(url, user_id, interval=5000):
         task_details = [task_details[matched_task_idx]]
         tids = [tids[matched_task_idx]]
 
-    print(task_details)
+    #print(task_details)
 
     if len(matched_tasks) == 0 or len(task_details) == 0 or len(tids) == 0:
         logger.warning(user_id + ": No task matching")
@@ -641,10 +645,10 @@ def send_push(settings, produce_routing_key):
                 if interval and status["last_active"] and status["last_match"] and current_time - status["last_active"] >= user_status[user]["interval"] and current_time - status["last_match"] >= user_status[user]["interval"]:
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
-                    response = task_classification(url, user, interval)
+                    response = task_classification(url, user, user_status[user]["interval"])
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
-                    print(user_status)
+                    #print(user_status)
                     if response["show_flag"]:
                         gevent.sleep(0.1)
                         reply_message = {
@@ -764,7 +768,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
         current_time = datetime.now().timestamp() * 1000
         message = ""
         if "userid" in payload and payload["userid"] not in user_status:
-            user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None, "url": payload["url"]}
+            user_status[payload["userid"]] = {"last_active": None, "interval": 5000, "last_match": None, "url": payload["url"], "pinnedSF": None}
             logger.info(f"Task matching for user {payload['userid']} has started...")
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
@@ -852,8 +856,6 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 # if user goes to a new page, the interval should be reset
                 user_status[payload["userid"]]["url"] = payload["url"]
                 user_status[payload["userid"]]["interval"] = 5000
-            if "pinnedSF" not in user_status[payload["userid"]]:
-                user_status[payload["userid"]]["pinnedSF"] = None
             print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]
