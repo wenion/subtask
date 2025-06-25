@@ -860,7 +860,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 # if user goes to a new page, the interval should be reset
                 user_status[payload["userid"]]["url"] = payload["url"]
                 user_status[payload["userid"]]["interval"] = 5000
-            print("triggered Client_ID", payload["client_id"], payload)
+            print("triggered Client_ID", payload["client_id"])
         #    url = payload["url"]
         #    user_id = payload["userid"]
         #    task_classification(url, user_id, interval=None)
