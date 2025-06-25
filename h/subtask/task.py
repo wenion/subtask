@@ -775,6 +775,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
             logger.info(f"Task matching for user {payload['userid']} has started...")
 
         if payload["messageType"] == "TraceData" and payload["tagName"] == "RECORD" and payload["textContent"] == "finish":
+            print(payload)
             # stop recording --> create ShareFlow
             user_status[payload["userid"]]["last_active"] = current_time
             if not user_status[payload["userid"]]["last_match"]:
