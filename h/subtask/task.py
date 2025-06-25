@@ -70,7 +70,7 @@ def load_all_process_models():
             pm_string = pm.pm_content
             net, im, fm = pnml_importer.deserialize(pm_string, parameters={"auto_guess_final_marking": False, "encoding": DEFAULT_ENCODING})
             all_process_models[f"{pm.pm_name}_[SEP]_{pm.session_id}"] = (net, im, fm)
-            logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded.")
+            logger.info(f"Process Model for {pm.pm_name}_{pm.session_id} loaded. {pm.pk}")
 
 
 def convert_log_to_formatted(event_log):
@@ -480,9 +480,9 @@ def task_classification(url, user_id, interval=5000):
             return next_request_result
     if len(trace) > 0 and user_id in idle_status and idle_status[user_id] > 0:
         del idle_status[user_id]
-    trace = trace[(~trace["tag_name"].str.startswith("EXPERT")) & (~trace["tag_name"].str.startswith("HYPOTHESIS"))]
-    if trace and len(trace) == 0:
-        logger.warning(f"{user_id}: User is interacting with side-bar or expert push" + " " + current_time.strftime("%Y-%m-%d %H:%M:%S.%f"))
+    trace = trace[(~trace["tag_name"].str.startswith("EXPERT")) & (~trace["tag_name"].str.startswith("HYPOTHESIS")) & (~trace["base_url"].str.startswith("https://goldmind.monash.edu/"))]
+    if trace is None or len(trace) == 0:
+        logger.warning(f"{user_id}: User is interacting with GoldMind" + " " + current_time.strftime("%Y-%m-%d %H:%M:%S.%f"))
         return next_request_result
     formatted_trace = convert_log_to_formatted(trace)
 
@@ -616,7 +616,7 @@ def task_classification(url, user_id, interval=5000):
         "task_name": "; ".join(matched_tasks),
         "certainty": match_score,
         "message": push_message,
-        "interval": interval * 2,
+        "interval": interval * 2.5,
         "task_ids": tids,
         "task_details": task_details,
         "show_flag": True
@@ -646,6 +646,9 @@ def send_push(settings, produce_routing_key):
                     logger.info(f"Matching for user {user} triggered...")
                     url = status["url"]
                     response = task_classification(url, user, user_status[user]["interval"])
+                    if response["interval"] >= 900000:
+                        to_del.append(user)
+                        continue
                     user_status[user]["interval"] = response["interval"]
                     client_id = status["client_id"]
                     #print(user_status)
@@ -856,7 +859,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 # if user goes to a new page, the interval should be reset
                 user_status[payload["userid"]]["url"] = payload["url"]
                 user_status[payload["userid"]]["interval"] = 5000
-            print("triggered Client_ID", payload["client_id"])
+            print("triggered Client_ID", payload["client_id"], payload)
         #    url = payload["url"]
         #    user_id = payload["userid"]
         #    task_classification(url, user_id, interval=None)

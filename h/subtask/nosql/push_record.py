@@ -83,21 +83,21 @@ def stop_pushing(url, user_id):
 def same_as_previous(user_id, url, push_type, push_content, additional_info):
     try:
         query = PushRecord.find(PushRecord.push_to == user_id)
-        result = query.copy(limit=1).sort_by("-timestamp").execute()
-        if not result or len(result) != 1:
+        results = query.copy(limit=3).sort_by("-timestamp").execute()
+        if not results or len(results) == 0:
             return False
-        result = result[0]
-        if result.url == url and result.push_type == push_type and result.push_content == push_content:
-            previous_set = set()
-            for val in json.loads(result.additional_info):
-                if "session_id" in val:
-                    previous_set.add(val["session_id"])
-            current_set = set()
-            for val in json.loads(additional_info):
-                if "session_id" in val:
-                    current_set.add(val["session_id"])
-            if previous_set == current_set:
-                return True
+        for result in results:
+            if result.url == url and result.push_type == push_type and result.push_content == push_content:
+                previous_set = set()
+                for val in json.loads(result.additional_info):
+                    if "session_id" in val:
+                        previous_set.add(val["session_id"])
+                current_set = set()
+                for val in json.loads(additional_info):
+                    if "session_id" in val:
+                        current_set.add(val["session_id"])
+                if previous_set == current_set:
+                    return True
         return False
     except:
         return False
