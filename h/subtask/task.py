@@ -18,8 +18,8 @@ from h.subtask.nosql import fetch_user_event, fetch_all_user_event, fetch_all_ev
     delete_process_model_by_session_creator, fetch_all_process_model, same_as_previous
 from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_name_id, delete_process_model, fetch_all_user_event_record, fetch_user_event_record_by_session, fetch_all_task_pages
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user, get_last_within_past_minute_in_task_page
-from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step, update_expert_step
-from h.subtask.nosql import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator
+from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step, update_expert_step, set_related_pms, get_process_model
+from h.subtask.nosql import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator, fetch_process_model_by_session_name
 from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk, set_expert_step, share_group_info, unshare_group_info
 import pandas as pd
 import numpy as np
@@ -196,27 +196,31 @@ def expert_steps(new_trace, new_pm, threshold=0.7, include_self=True):
     b_centrality = dict(sorted(b_centrality.items(), key=lambda x: x[1], reverse=True))
     new_pm_places = [val.name for val in new_pm[0].transitions]
     key_steps = [k for k, v in b_centrality.items() if k in new_pm_places and v > 0.1]
+    related_pms = []
     for pm in conforming_pm:
         pm_name, session_id = pm.split("_[SEP]_")
+        related_pm = fetch_process_model_by_session_name(session_id, pm_name)
+        related_pms.append(related_pm.pk)
         outcome = update_expert_step(pm_name, session_id, key_steps)
         if not outcome[0]:
             logger.error(outcome[1])
-    return key_steps
+    return key_steps, related_pms
 
 
 def load_expert_steps_for_pm(pm_name, session_id, pm):
     trace = fetch_all_events_by_tn_sid(pm_name, session_id)["table_result"]
     formatted_trace = convert_log_to_formatted(pd.DataFrame(trace))
-    exp_steps = expert_steps(formatted_trace, new_pm=pm, threshold=0.7, include_self=False)
+    exp_steps, related_pms = expert_steps(formatted_trace, new_pm=pm, threshold=0.7, include_self=False)
     exp_steps_timed = []
     for index, row in formatted_trace.iterrows():
         if row["concept:name"] in exp_steps:
             exp_steps_timed.append((row["pk"], row["timestamp"]))
-    outcome = set_expert_step(pm_name, session_id, exp_steps_timed)
-    if not outcome[0]:
-        logger.error(outcome[1])
+    outcome_1 = set_expert_step(pm_name, session_id, exp_steps_timed)
+    outcome_2 = set_related_pms(pm_name, session_id, related_pms)
+    if not outcome_1[0] or not outcome_2[0]:
+        logger.error(outcome[1] + ";" + outcome_2[1])
     else:
-        logger.info(outcome[1])
+        logger.info(outcome[1] + ";" + outcome_2[1])
 
 
 
@@ -224,7 +228,8 @@ logger.info("Loading Process Models...")
 load_all_process_models()
 for k, v in all_process_models.items():
     tn, sid = k.split("_[SEP]_")
-    load_expert_steps_for_pm(tn, sid, v)
+    pm = (v[0], v[1], v[2])
+    load_expert_steps_for_pm(tn, sid, pm)
 logger.info("Service Started!!")
 
 
@@ -242,7 +247,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id=""):
     trace = pd.DataFrame(result["table_result"])
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
-    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+    exp_steps, related_pms = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
     exp_steps_timed = []
     if not net:
         return {
@@ -274,7 +279,8 @@ def create_pm(user_id, shareflow_name, session_id, group_id=""):
                                           session_id=session_id,
                                           pk_concept_mapping=pk_concept_mapping,
                                           expert_steps=sorted(exp_steps_timed, key=lambda x: x[1]),
-                                          groups=[])
+                                          groups=[],
+                                          related_pms=related_pms)
             if not status:
                 logger.error("Error occurred during the creation of process model.")
                 return {
@@ -321,7 +327,7 @@ def update_pm(user_id, shareflow_name, session_id, shareflow_df, group_id=""):
     trace = shareflow_df
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
-    exp_steps = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+    exp_steps, related_pms = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
     exp_steps_timed = []
     if not net:
         return {
@@ -353,7 +359,8 @@ def update_pm(user_id, shareflow_name, session_id, shareflow_df, group_id=""):
                                           session_id=session_id,
                                           pk_concept_mapping=pk_concept_mapping,
                                           expert_steps=sorted(exp_steps_timed, key=lambda x: x[1]),
-                                          groups=[])
+                                          groups=[],
+                                          related_pms=related_pms)
             if not status:
                 logger.error("Error occurred during the update of process model.")
                 return {
@@ -410,6 +417,8 @@ def delete_pm(user_id, session_id, shareflow_name):
         del all_process_models[f"{shareflow_name}_[SEP]_{session_id}"]
     else:
         logger.warning(f"Process model not found in session, {user_id}, {session_id}")
+    pm = fetch_process_model_by_session_name(user_id, session_id)
+    related_pms = pm.related_pms
     status = delete_process_model_by_session_creator(session_id, user_id)
     if not status:
         logger.error(f"Error deleting process model from database, {user_id}, {session_id}")
@@ -421,6 +430,12 @@ def delete_pm(user_id, session_id, shareflow_name):
     if not deleted:
         logger.error(f"Error deleting task page info from database, {user_id}, {session_id}")
     logger.info(f"PM {shareflow_name}_{session_id} deleted by {user_id}")
+    # update all related_pms to revise the expert steps and their related_pms (which should theoretically exclude the deleted pm)
+    for ppk in related_pms:
+        cur_pm = get_process_model(ppk)
+        loaded_pm = all_process_models[f"{cur_pm.pm_name}_[SEP]_{cur_pm.session_id}"]
+        pm = (loaded_pm[0], loaded_pm[1], loaded_pm[2])
+        load_expert_steps_for_pm(cur_pm.pm_name, cur_pm.session_id, pm)
     return {
         "message": "Process model deleted",
         "removed": True

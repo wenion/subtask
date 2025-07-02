@@ -19,6 +19,7 @@ class ProcessModel(JsonModel):
     session_id: str = Field(index=True) # session_id is actually the pk of ShareFlow (user_event_record)
     pk_concept_mapping: dict = Field(index=False)
     expert_steps: Optional[list] = Field(index=False, default=[])
+    related_pms: Optional[list] = Field(index=False, default=[])
     groups: Optional[list] = Field(index=False, default=[])
 
 
@@ -30,6 +31,12 @@ def fetch_all_process_model():
 
 def fetch_process_model_by_session_creator(session_id, creator):
     query = ProcessModel.find((ProcessModel.session_id == session_id) & (ProcessModel.creator == creator))
+    total = query.all()
+    return total[0] if len(total) > 0 else None
+
+
+def fetch_process_model_by_session_name(session_id, pm_name):
+    query = ProcessModel.find((ProcessModel.session_id == session_id) & (ProcessModel.pm_name == pm_name))
     total = query.all()
     return total[0] if len(total) > 0 else None
 
@@ -48,7 +55,8 @@ def create_process_model(
         pm_content,
         session_id,
         pk_concept_mapping,
-        expert_steps):
+        expert_steps,
+        related_pms):
     exist = fetch_process_model_by_session_creator(session_id, creator)
     if exist:
         return exist
@@ -60,7 +68,8 @@ def create_process_model(
         pm_content = pm_content,
         session_id = session_id,
         pk_concept_mapping = pk_concept_mapping,
-        expert_steps = expert_steps
+        expert_steps = expert_steps,
+        related_pms = related_pms
     )
     process_model.save()
     return process_model
@@ -155,6 +164,20 @@ def set_expert_step(pm_name, session_id, expert_steps):
         try:
             pm.save()
             return True, "Expert steps set"
+        except Exception as e:
+            return False, str(e)
+    return False, "Process Model not found"
+
+
+def set_related_pms(pm_name, session_id, related_pms):
+    query = ProcessModel.find((ProcessModel.session_id == session_id) & (ProcessModel.pm_name == pm_name))
+    total = query.all()
+    if len(total) > 0:
+        pm = total[0]
+        pm.related_pms = related_pms
+        try:
+            pm.save()
+            return True, "Related PMs set"
         except Exception as e:
             return False, str(e)
     return False, "Process Model not found"
