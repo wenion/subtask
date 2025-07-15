@@ -173,7 +173,7 @@ def expert_steps(new_trace, new_pm, threshold=0.7, include_self=True):
     conforming_trace = []
     conforming_pm = []
     for k, v in all_process_models.items():
-        net, im, fm = v
+        net, im, fm, _ = v
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(new_trace, net, im, fm,
                                                                                      activity_key="concept:name",
                                                                                      case_id_key="case:concept:name",
@@ -315,7 +315,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id=""):
             "created": False
         }
     os.remove(file_path)
-    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm)
+    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm, []) 
     parameters = {"format": "png"}
     gviz = visualizer.apply(net, im, fm, parameters=parameters)
     visualizer.save(gviz, f"process_models/{sf_name}_{current_timestamp}.png")
@@ -395,7 +395,7 @@ def update_pm(user_id, shareflow_name, session_id, shareflow_df, group_id=""):
             "updated": False
         }
     os.remove(file_path)
-    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm)
+    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm, [])
     parameters = {"format": "png"}
     gviz = visualizer.apply(net, im, fm, parameters=parameters)
     visualizer.save(gviz, f"process_models/{sf_name}_{current_timestamp}.png")
