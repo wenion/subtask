@@ -890,7 +890,9 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 logger.error(f"Error sharing/unsharing process model, {meta['session_id']}, {meta['task_name']}; due to {outcome[1]}")
             elif outcome[0]:
                 logger.info(f"PM {meta['session_id']}, {meta['task_name']} shared / unshared to {target_group}")
-                all_process_models[f"{meta['task_name']}_[SEP]_{meta['session_id']}"][3] = outcome[1]
+                old_pm_data = all_process_models[f"{meta['task_name']}_[SEP]_{meta['session_id']}"]
+                new_pm_data = (old_pm_data[0], old_pm_data[1], old_pm_data[2], outcome[1])
+                all_process_models[f"{meta['task_name']}_[SEP]_{meta['session_id']}"] = new_pm_data
 
         #{"messageType": "ShareShareFlow", "status": "share", "shareflowMeta": {"session_id": "xxx", "task_name": "xxx", "creator": "xxx"}, "groupid": "__world__"}
         #{"messageType": "ShareShareFlow", "status": "unshare", "shareflowMeta": {"session_id": "xxx", "task_name": "xxx", "creator": "xxx"}, "groupid": "__world__"}
