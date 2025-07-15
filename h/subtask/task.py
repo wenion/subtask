@@ -197,27 +197,21 @@ def expert_steps(new_trace, new_pm, threshold=0.7, include_self=True):
                 formatted_trace["case_id"] = [len(conforming_trace)] * formatted_trace.shape[0]
                 conforming_trace.append(formatted_trace)
                 conforming_pm.append(k)
-    print("point 1")
     if len(conforming_trace) == 0:
-        return {}
+        return [], []
     if include_self:
         new_trace["case_id"] = [len(conforming_trace)] * new_trace.shape[0]
         conforming_trace.append(new_trace)
-    print("point 2")
     total_trace = pd.concat(conforming_trace)
     dfg = pm4py.discover_dfg(total_trace)[0]
     G = nx.DiGraph()
-    print("point 3")
     for (act_from, act_to), freq in dfg.items():
         G.add_edge(act_from, act_to, weight=freq)
-    print("point 4")
     b_centrality = nx.betweenness_centrality(G, normalized=True, endpoints=False)
     b_centrality = dict(sorted(b_centrality.items(), key=lambda x: x[1], reverse=True))
-    print("point 5")
     new_pm_places = [val.name for val in new_pm[0].transitions]
     key_steps = [k for k, v in b_centrality.items() if k in new_pm_places and v > 0.1]
     related_pms = []
-    print("point 6")
     for pm in conforming_pm:
         pm_name, session_id = pm.split("_[SEP]_")
         related_pm = fetch_process_model_by_session_name(session_id, pm_name)
