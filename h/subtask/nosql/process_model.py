@@ -56,6 +56,7 @@ def create_process_model(
         session_id,
         pk_concept_mapping,
         expert_steps,
+        groups,
         related_pms):
     exist = fetch_process_model_by_session_creator(session_id, creator)
     if exist:
@@ -69,6 +70,7 @@ def create_process_model(
         session_id = session_id,
         pk_concept_mapping = pk_concept_mapping,
         expert_steps = expert_steps,
+        groups = groups,
         related_pms = related_pms
     )
     process_model.save()
