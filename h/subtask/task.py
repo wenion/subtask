@@ -262,7 +262,8 @@ def create_pm(user_id, shareflow_name, session_id, group_id=""):
     trace = pd.DataFrame(result["table_result"])
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
-    exp_steps, related_pms = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+    new_pm = (net, im, fm)
+    exp_steps, related_pms = expert_steps(new_trace=formatted_trace, new_pm=new_pm, threshold=0.7)
     exp_steps_timed = []
     if not net:
         return {
@@ -342,7 +343,8 @@ def update_pm(user_id, shareflow_name, session_id, shareflow_df, group_id=""):
     trace = shareflow_df
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
-    exp_steps, related_pms = expert_steps(new_trace=formatted_trace, new_pm=(net, im, fm), threshold=0.7)
+    new_pm = (net, im, fm)
+    exp_steps, related_pms = expert_steps(new_trace=formatted_trace, new_pm=new_pm, threshold=0.7)
     exp_steps_timed = []
     if not net:
         return {
