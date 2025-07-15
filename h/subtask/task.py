@@ -263,6 +263,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id=""):
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
     new_pm = (net, im, fm)
+    print(len(new_pm))
     exp_steps, related_pms = expert_steps(new_trace=formatted_trace, new_pm=new_pm, threshold=0.7)
     exp_steps_timed = []
     if not net:
