@@ -35,6 +35,7 @@ import pm4py
 import json
 import networkx as nx
 import time
+import urllib.request
 
 
 TRACE_EXCHANGE = "trace"
@@ -56,6 +57,20 @@ logger.info("Service Starting...")
 
 all_process_models = {}
 
+def check_server(url="https://www.google.com", timeout=5):
+    try:
+        urllib.request.urlopen(url, timeout=timeout)
+        return "Nectar"
+    except:
+        return "Local"
+
+global_time_delta = 0
+if check_server() == "Local":
+    global_time_delta = 22
+    logger.info(f"Local server detected. Time delta set to {global_time_delta}")
+elif check_server() == "Nectar":
+    global_time_delta = 14
+    logger.info(f"Nectar server detected. Time delta set to {global_time_delta}")
 
 def load_all_process_models():
     process_models = fetch_all_process_model()
@@ -466,7 +481,7 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
         logger.info(user_id + ": Stop pushing criteria matched")
         return {"task_name": "", "certainty": 0, "message": "", "interval": 60000, "task_ids": [], "task_details": [], "show_flag": False}
 
-    time_delta = 14
+    time_delta = global_time_delta
     interval_in_second = interval / 1000
     if interval_in_second > time_delta:
         time_delta = interval_in_second
