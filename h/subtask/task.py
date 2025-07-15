@@ -233,9 +233,9 @@ def load_expert_steps_for_pm(pm_name, session_id, pm):
     outcome_1 = set_expert_step(pm_name, session_id, exp_steps_timed)
     outcome_2 = set_related_pms(pm_name, session_id, related_pms)
     if not outcome_1[0] or not outcome_2[0]:
-        logger.error(outcome[1] + ";" + outcome_2[1])
+        logger.error(outcome_1[1] + ";" + outcome_2[1])
     else:
-        logger.info(outcome[1] + ";" + outcome_2[1])
+        logger.info(outcome_1[1] + ";" + outcome_2[1])
 
 
 
@@ -315,7 +315,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id=""):
             "created": False
         }
     os.remove(file_path)
-    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm, []) 
+    all_process_models[f"{shareflow_name}_[SEP]_{session_id}"] = (net, im, fm, [])
     parameters = {"format": "png"}
     gviz = visualizer.apply(net, im, fm, parameters=parameters)
     visualizer.save(gviz, f"process_models/{sf_name}_{current_timestamp}.png")
