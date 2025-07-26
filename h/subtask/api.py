@@ -34,6 +34,7 @@ def knowledge_pushing(kn, payload):
     summary = response[0]
     response_list = response[1]
     topics = []
+    top5 = []
     for topic in response_list:
         results = []
         for i, (doc, score) in enumerate(topic):
@@ -51,6 +52,29 @@ def knowledge_pushing(kn, payload):
             "summary": summary,
             "context": [top5]
         }
+    }
+
+def summarise_shareflow_view(kn, payload):
+    title = payload.get("title")
+    url = payload.get("url")
+    content = payload.get("content")
+
+    summary = kn.summarise_shareflow(title, content, url)
+    return {
+        "success": True,
+        "summary": summary,
+        "title": title,
+        "url": url
+    }
+
+def shareflow_segmentation_view(kn, payload):
+    content = payload.get("content")
+
+    structured_result = kn.shareflow_segmentation(content)
+    return {
+        "success": True,
+        "sections": structured_result.get("sections", []),
+        "raw": structured_result
     }
 
 

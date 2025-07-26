@@ -3,7 +3,11 @@ from kombu import Queue
 from kombu.mixins import ConsumerProducerMixin
 
 from h.realtime import get_connection
-from h.subtask.api import query
+from h.subtask.api import (
+    query,
+    summarise_shareflow_view,
+    shareflow_segmentation_view
+)
 
 rpc_queue = Queue('rpc_queue')
 
@@ -30,6 +34,10 @@ class Worker(ConsumerProducerMixin):
         if func == "query" :
             result = query(self.kn, message.payload.get('q'))
             import time
+        elif func == "segmentation":
+            result = shareflow_segmentation_view(self.kn, message.payload)
+        elif func == "summary":
+            result = summarise_shareflow_view(self.kn, message.payload)
 
         self.producer.publish(
             {"result" : result},

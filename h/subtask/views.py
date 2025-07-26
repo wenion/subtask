@@ -145,3 +145,117 @@ def knowledge_upload(request):
         import traceback
         traceback.print_exc()
         return {"error": str(e)}
+
+@view_config(route_name='retrieve_ids', request_method='GET', renderer='json')
+def retrieve_doc_ids(request):
+    try:
+        kn = request.registry['kn']
+        key = request.params.get('key')
+        search_by = request.params.get('search_by', 'url').lower()
+
+        if not key:
+            return {"error": "Missing required parameter: 'key'"}
+        if search_by not in ['url', 'title']:
+            return {"error": "Parameter 'search_by' must be either 'url' or 'title'"}
+
+        results = kn.retrieve_doc_ids_by_key(key, search_by)
+        return {
+            "count": len(results),
+            "results": results
+         }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
+@view_config(route_name='update_doc', request_method='POST', renderer='json')
+def update_doc_view(request):
+    try:
+        kn = request.registry['kn']
+        doc_id = request.POST.get("doc_id")
+        if not doc_id:
+            return {"error": "Missing 'doc_id'"}
+
+        # Optional fields
+        title = request.POST.get("title")
+        content = request.POST.get("content")
+        url = request.POST.get("url")
+        repository = request.POST.get("repository")
+        summary = request.POST.get("summary")
+
+        def parse_bool(val):
+            return val.lower() in ["true", "1", "yes"] if val else None
+
+        deleted = parse_bool(request.POST.get("deleted"))
+        expired = parse_bool(request.POST.get("expired"))
+
+        result = kn.update_document_by_id(
+            doc_id=doc_id,
+            title=title,
+            content=content,
+            url=url,
+            repository=repository,
+            summary=summary,
+            deleted=deleted,
+            expired=expired
+        )
+
+        return {
+            "success": True,
+            "message": "Document updated",
+            "updated_doc": result
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
+@view_config(route_name='summarise_shareflow', request_method='POST', renderer='json')
+def summarise_shareflow_view(request):
+    try:
+        kn = request.registry['kn']
+        title = request.POST.get("title")
+        url = request.POST.get("url")
+        content = request.POST.get("content")
+
+        if not title or not url or not content:
+            return {"error": "Missing title, url, or content"}
+
+        summary = kn.summarise_shareflow(title, content, url)
+        return {
+            "success": True,
+            "summary": summary,
+            "title": title,
+            "url": url
+        }
+
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
+@view_config(route_name='shareflow_segmentation', request_method='POST', renderer='json')
+def shareflow_segmentation_view(request):
+    try:
+        kn = request.registry['kn']
+        content = request.POST.get("content")
+
+        if not content:
+            return {"error": "Missing 'content' parameter"}
+
+
+        structured_result = kn.shareflow_segmentation(content)
+        return {
+            "success": True,
+            "sections": structured_result.get("sections", []),
+            "raw": structured_result
+        }
+
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}

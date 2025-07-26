@@ -34,6 +34,10 @@ def create_app(_global_config, **settings):
     config.add_route('knowledge', '/knowledge')
     config.add_route('upload', '/upload')
 
+    config.add_route('retrieve_ids', '/retrieve_ids')
+    config.add_route('update_doc', '/update_doc')
+    config.add_route('summarise_shareflow', '/summarise_shareflow')
+    config.add_route('shareflow_segmentation', '/shareflow_segmentation')
 
     # Health check
     config.scan("h.views.status")
