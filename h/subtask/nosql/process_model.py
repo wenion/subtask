@@ -147,7 +147,7 @@ def get_next_pm_step(pm_name, session_id, cur_timestamp):
 
         future_steps.sort(key=lambda x: x[1])
 
-        return future_steps[:2]
+        return future_steps[:1]
 
     return None
 

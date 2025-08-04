@@ -542,6 +542,11 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
                 cur_progress.append(val.name.split("_", 1)[1])
             else:
                 cur_progress.append(val)
+        has_progress = True
+        if not cur_progress:
+            has_progress = False
+            # if reached marking cannot be found, let's rely on enabled transitions
+            cur_progress = [val.name for val in list(replay_result["enabled_transitions_in_marking"])]
         progress = []
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
@@ -555,17 +560,18 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
                     # if the progress list is empty, we really can't tell where the user is; in this case, let's just pass this one, which will likely fall back to a previous step
                     if progress:
                         last_ts = progress[-1][1]
-                        closest = min(results, key=lambda x: abs((x[1] - last_ts).total_seconds()))
+                        closest = min(results, key=lambda x: abs((x[1] - last_ts)))
                         progress.append(closest)
                     else:
                         pass
 
         progress = sorted(progress, key=lambda item: item[1], reverse=True)
         # we've already got the current progress, now it is time to get the next step
-        if progress:
+        if progress and has_progress:
             added_next_steps = get_next_pm_step(pm_name, session_id, progress[0][1])
             if added_next_steps:
                 progress = added_next_steps + progress
+
         match_scores[k] = fitness
         match_steps[k] = progress
 
