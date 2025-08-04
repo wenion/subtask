@@ -120,7 +120,7 @@ def convert_log_to_formatted(event_log):
                 for key, value in params.items():
                     nondigit_values = []
                     for val in value:
-                        if not val.isdigit():
+                        if not any(char.isdigit() for char in val):
                             nondigit_values.append(val.translate(translation_table))
                     new_params += f"{key.translate(translation_table)}_{','.join(nondigit_values)}&"
                     # if key in ["id", "course", "update", "courseid"]:
@@ -543,10 +543,7 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
             else:
                 cur_progress.append(val)
         has_progress = True
-        if not cur_progress:
-            has_progress = False
-            # if reached marking cannot be found, let's rely on enabled transitions
-            cur_progress = [val.name for val in list(replay_result["enabled_transitions_in_marking"])]
+
         progress = []
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
@@ -564,6 +561,26 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
                         progress.append(closest)
                     else:
                         pass
+
+        if not progress:
+            has_progress = False
+            # if reached marking cannot be found, let's rely on enabled transitions
+            cur_progress = [val.name for val in list(replay_result["enabled_transitions_in_marking"])]
+            for p in cur_progress:
+                results = get_step_pk_timestamp(pm_name, session_id, p)
+                if results:
+                    if len(results) == 1:
+                        progress += results
+                    else:
+                        # results are list of tuples, each tuple will be (concept, timestamp) pairs
+                        # if the len of the results are greater than 1, it means that there are several occurence of this concept; in this case, the element within results that has a timestamp closest to the last element in the progress list (if any) should be added to the progress list
+                        # if the progress list is empty, we really can't tell where the user is; in this case, let's just pass this one, which will likely fall back to a previous step
+                        if progress:
+                            last_ts = progress[-1][1]
+                            closest = min(results, key=lambda x: abs((x[1] - last_ts)))
+                            progress.append(closest)
+                        else:
+                            pass
 
         progress = sorted(progress, key=lambda item: item[1], reverse=True)
         # we've already got the current progress, now it is time to get the next step
