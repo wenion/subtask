@@ -133,6 +133,26 @@ def get_next_expert_step(pm_name, session_id, cur_timestamp):
     return None
 
 
+def get_next_pm_step(pm_name, session_id, cur_timestamp):
+    query = ProcessModel.find((ProcessModel.session_id == session_id) & (ProcessModel.pm_name == pm_name))
+    total = query.all()
+    if len(total) > 0:
+        pm = total[0]
+        all_steps = []
+
+        for steps in pm.pk_concept_mapping.values():
+            all_steps.extend(steps)
+
+        future_steps = [step for step in all_steps if step[1] > cur_timestamp]
+
+        future_steps.sort(key=lambda x: x[1])
+
+        return future_steps[:2]
+
+    return None
+
+
+
 def update_expert_step(pm_name, session_id, expert_steps):
     query = ProcessModel.find((ProcessModel.pm_name == pm_name) & (ProcessModel.session_id == session_id))
     total = query.all()

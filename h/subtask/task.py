@@ -20,7 +20,7 @@ from h.subtask.nosql import add_task_page, delete_task_page, delete_task_page_na
 from h.subtask.nosql import add_push_record, delete_push_record, fetch_push_record, fetch_all_push_record, clean_old_record_from_user, get_last_within_past_minute_in_task_page
 from h.subtask.nosql import is_task_page, stop_pushing, fetch_all_events_by_tn_sid, get_next_expert_step, update_expert_step, set_related_pms, get_process_model
 from h.subtask.nosql import fetch_all_process_model, delete_process_model, get_step_pk_timestamp, fetch_process_model_by_session_creator, fetch_process_model_by_session_name
-from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk, set_expert_step, share_group_info, unshare_group_info
+from h.subtask.nosql import fetch_user_event_record_by_session_id, fetch_user_event_record_by_pk, set_expert_step, share_group_info, unshare_group_info, get_next_pm_step
 import pandas as pd
 import numpy as np
 import urllib.parse
@@ -435,7 +435,7 @@ def delete_pm(user_id, session_id, shareflow_name):
     else:
         logger.warning(f"Process model not found in session, {user_id}, {session_id}")
     pm = fetch_process_model_by_session_name(user_id, session_id)
-    related_pms = pm.related_pms
+    related_pms = pm.related_pms if pm else []
     status = delete_process_model_by_session_creator(session_id, user_id)
     if not status:
         logger.error(f"Error deleting process model from database, {user_id}, {session_id}")
@@ -530,15 +530,40 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
         replay_result = pm4py.conformance.conformance_diagnostics_token_based_replay(formatted_trace, net, im, fm, activity_key="concept:name", case_id_key="case:concept:name", timestamp_key="time:timestamp")[0]
 
         fitness = replay_result["trace_fitness"]
-        cur_progress = list(replay_result["enabled_transitions_in_marking"]) # or "enabled_transitions_in_marking" "reached_marking"
+        #cur_progress = list(replay_result["enabled_transitions_in_marking"]) # or "enabled_transitions_in_marking" "reached_marking"
+        reached_progress = list(replay_result["reached_marking"])
+        cur_progress = []
+        for val in reached_progress:
+            if val.name == "source0":
+                continue
+            elif "_" in val.name:
+                cur_progress.append(val.name.split("_", 1)[1])
+            else:
+                cur_progress.append(val)
         progress = []
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
             results = get_step_pk_timestamp(pm_name, session_id, p.name)
-            if results and len(results) == 1:
-                # if there are multiple occurrence of this concept step, ignore for now, which will likely fall back to a previous step (having minimal impact on the task identification)
-                progress += results
+            if results:
+                if len(results) == 1:
+                    progress += results
+                else:
+                    # results are list of tuples, each tuple will be (concept, timestamp) pairs
+                    # if the len of the results are greater than 1, it means that there are several occurence of this concept; in this case, the element within results that has a timestamp closest to the last element in the progress list (if any) should be added to the progress list
+                    # if the progress list is empty, we really can't tell where the user is; in this case, let's just pass this one, which will likely fall back to a previous step
+                    if progress:
+                        last_ts = progress[-1][1]
+                        closest = min(results, key=lambda x: abs((x[1] - last_ts).total_seconds()))
+                        progress.append(closest)
+                    else:
+                        pass
+
         progress = sorted(progress, key=lambda item: item[1], reverse=True)
+        # we've already got the current progress, now it is time to get the next step
+        if progress:
+            added_next_steps = get_next_pm_step(pm_name, session_id, progress[0][1])
+            if added_next_steps:
+                progress = added_next_steps + progress
         match_scores[k] = fitness
         match_steps[k] = progress
 
