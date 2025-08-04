@@ -341,6 +341,7 @@ def create_pm(user_id, shareflow_name, session_id, group_id=""):
 
 def update_pm(user_id, shareflow_name, session_id, shareflow_df, group_id=""):
     trace = shareflow_df
+    trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))]
     trace = trace[(trace["tag_name"] != "RECORD") & (~trace["tag_name"].str.startswith("HYPOTHESIS"))] # filter out RECORD events and extension events
     net, im, fm, formatted_trace = create_process_model_from_log(trace)
     new_pm = (net, im, fm)
@@ -886,7 +887,7 @@ def process_messages(settings, subscribe_routing_key, produce_routing_key):
                 logger.error(f"Error deleting process model for update, {creator}, {session_id}, {task_name}; due to {delete_outcome['message']}")
             else:
                 logger.info(f"PM {task_name}_{session_id} deleted for update by {creator}")
-            update_outcome = update_pm(creator, task_name, session_id, group_id, trace_df)
+            update_outcome = update_pm(creator, task_name, session_id, trace_df, group_id)
             if not update_outcome["updated"]:
                 logger.error(f"Error updating process model, {creator}, {session_id}, {task_name}; due to {update_outcome['message']}")
             else:
