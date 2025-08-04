@@ -215,7 +215,8 @@ def expert_steps(new_trace, new_pm, threshold=0.7, include_self=True):
     for pm in conforming_pm:
         pm_name, session_id = pm.split("_[SEP]_")
         related_pm = fetch_process_model_by_session_name(session_id, pm_name)
-        related_pms.append(related_pm.pk)
+        if related_pm:
+            related_pms.append(related_pm.pk)
         outcome = update_expert_step(pm_name, session_id, key_steps)
         if not outcome[0]:
             logger.error(outcome[1])
