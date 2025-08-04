@@ -544,7 +544,7 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
         progress = []
         pm_name, session_id = k.split("_[SEP]_")
         for p in cur_progress:
-            results = get_step_pk_timestamp(pm_name, session_id, p.name)
+            results = get_step_pk_timestamp(pm_name, session_id, p)
             if results:
                 if len(results) == 1:
                     progress += results
