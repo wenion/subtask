@@ -504,7 +504,7 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
             idle_status[user_id] += 1
         logger.warning(f"{user_id}: Not enough trace found - {len(trace)}" + " " + current_time.strftime("%Y-%m-%d %H:%M:%S.%f"))
         if user_id in idle_status:
-            # if an user is idle for more than 5 minutes, gradually increase the request interval
+            # if a user is idle for more than 5 minutes, gradually increase the request interval
             idle_result = next_request_result.copy()
             multiplier = 1
             if int(idle_status[user_id]/12) >= 5:
@@ -679,15 +679,17 @@ def task_classification(url, user_id, interval=5000, user_groups=[]):
         return next_request_result
 
     push_message = "The following ShareFlows from your colleagues might be useful: "
-    same = same_as_previous(user_id=user_id,
-                            url=url,
-                            push_type="SF",
-                            push_content=push_message,
-                            additional_info=json.dumps(task_details))
-    # TODO: confirm if users should receive new push if they were identified to be in a different step
-    if same:
-        logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
-        return next_request_result
+
+    # TODO: temporarily disable the same as previous check for demo purpose
+    # same = same_as_previous(user_id=user_id,
+    #                         url=url,
+    #                         push_type="SF",
+    #                         push_content=push_message,
+    #                         additional_info=json.dumps(task_details))
+    # # TODO: confirm if users should receive new push if they were identified to be in a different step
+    # if same:
+    #     logger.info(user_id + ": Same task identified as in previous Shareflow Push; the current one won't be pushed")
+    #     return next_request_result
 
     pr = add_push_record(timestamp=int(datetime.now().timestamp()),
                          push_type="SF",
