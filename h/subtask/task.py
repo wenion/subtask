@@ -242,10 +242,10 @@ def load_expert_steps_for_pm(pm_name, session_id, pm):
 
 logger.info("Loading Process Models...")
 load_all_process_models()
-# for k, v in all_process_models.items():
-#     tn, sid = k.split("_[SEP]_")
-#     pm = (v[0], v[1], v[2])
-#     load_expert_steps_for_pm(tn, sid, pm)
+for k, v in all_process_models.items():
+    tn, sid = k.split("_[SEP]_")
+    pm = (v[0], v[1], v[2])
+    load_expert_steps_for_pm(tn, sid, pm)
 logger.info("Service Started!!")
 
 
