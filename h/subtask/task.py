@@ -226,7 +226,7 @@ def expert_steps(new_trace, new_pm, threshold=0.7, include_self=True):
 def load_expert_steps_for_pm(pm_name, session_id, pm):
     trace = fetch_all_events_by_tn_sid(pm_name, session_id)["table_result"]
     formatted_trace = convert_log_to_formatted(pd.DataFrame(trace))
-    exp_steps, related_pms = expert_steps(formatted_trace, new_pm=pm, threshold=0.7, include_self=False)
+    exp_steps, related_pms = expert_steps(formatted_trace, new_pm=pm, threshold=0.5, include_self=False)
     exp_steps_timed = []
     for index, row in formatted_trace.iterrows():
         if row["concept:name"] in exp_steps:
